@@ -45,6 +45,35 @@
   50% { opacity: 0.8; }
 }
 
+@keyframes routebar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+/* ===== Smooth, flash-free taps (mobile) ===== */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Pointer cursor for every interactive element (links, buttons, menu items) */
+a,
+button,
+[role="button"],
+[role="menuitem"],
+summary,
+label[for] {
+  cursor: pointer;
+}
+
+a:disabled,
+button:disabled {
+  cursor: not-allowed;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 /* ===== Scrollbar ===== */
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: #0a0a0f; }
@@ -84,6 +113,7 @@
 /* ===== Glass card ===== */
 .glass {
   background: rgba(24, 24, 27, 0.6);
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(39, 39, 42, 0.8);
 }
