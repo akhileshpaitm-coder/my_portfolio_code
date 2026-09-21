@@ -165,12 +165,12 @@ export default async function ProjectsSection() {
               </div>
 
               {/* Title */}
-              <h3 className="mb-2 break-words text-lg font-semibold text-zinc-100">
+              <h3 className="mb-2 line-clamp-2 break-words text-lg font-semibold text-zinc-100">
                 {project.title}
               </h3>
 
               {/* Description */}
-              <p className="mb-4 break-words text-sm leading-relaxed text-zinc-400">
+              <p className="mb-4 line-clamp-4 break-words text-sm leading-relaxed text-zinc-400">
                 {project.description}
               </p>
 

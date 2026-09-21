@@ -12,8 +12,44 @@ interface FormData {
 
 type Status = "idle" | "sending" | "success" | "error";
 
+/** Render ==text== segments in cyan (same markup as the About section). */
+function ResponseNote({ text }: { text: string }) {
+  const parts: Array<{ text: string; cyan: boolean }> = [];
+  const re = /==([^=]+)==/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push({ text: text.slice(last, m.index), cyan: false });
+    parts.push({ text: m[1], cyan: true });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push({ text: text.slice(last), cyan: false });
+
+  return (
+    <p className="text-sm leading-relaxed text-zinc-400">
+      {parts.map((p, i) =>
+        p.cyan ? (
+          <span key={i} className="text-cyan-300">{p.text}</span>
+        ) : (
+          <span key={i}>{p.text}</span>
+        )
+      )}
+    </p>
+  );
+}
+
 // ── Component ────────────────────────────────
-export default function ContactSection() {
+export default function ContactSection({
+  email,
+  location,
+  availability,
+  responseNote,
+}: {
+  email: string;
+  location: string;
+  availability: string;
+  responseNote: string;
+}) {
   const [form, setForm] = useState<FormData>({
     name: "",
     email: "",
@@ -125,9 +161,9 @@ export default function ContactSection() {
               </h3>
               <div className="space-y-4">
                 {[
-                  { icon: "📧", label: "Email", value: "akhileshpaitm@gmail.com" },
-                  { icon: "📍", label: "Location", value: "India" },
-                  { icon: "💼", label: "Availability", value: "Open to opportunities" },
+                  { icon: "📧", label: "Email", value: email },
+                  { icon: "📍", label: "Location", value: location },
+                  { icon: "💼", label: "Availability", value: availability },
                 ].map((item) => (
                   <div key={item.label} className="flex items-start gap-3">
                     <span className="mt-0.5 text-lg">{item.icon}</span>
@@ -144,9 +180,7 @@ export default function ContactSection() {
               <h3 className="mb-4 text-sm font-semibold text-zinc-100 uppercase tracking-wider">
                 Quick Response
               </h3>
-              <p className="text-sm leading-relaxed text-zinc-400">
-                I typically respond within <span className="text-cyan-300">24 hours</span>. For urgent inquiries, feel free to reach out via email directly.
-              </p>
+              <ResponseNote text={responseNote} />
             </div>
           </div>
 

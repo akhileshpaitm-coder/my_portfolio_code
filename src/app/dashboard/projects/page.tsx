@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { getProjects } from "@/lib/projects";
-import { deleteProjectAction } from "./actions";
+import DeleteProjectButton from "./DeleteProjectButton";
 
 export const metadata = {
   title: "Manage Projects | Dashboard",
@@ -114,15 +114,7 @@ export default async function ManageProjectsPage() {
               >
                 Edit
               </Link>
-              <form action={deleteProjectAction}>
-                <input type="hidden" name="id" value={p.id} />
-                <button
-                  type="submit"
-                  className="rounded-lg border border-zinc-800 px-3.5 py-2 text-xs font-medium text-red-400 transition-colors hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300"
-                >
-                  Delete
-                </button>
-              </form>
+              <DeleteProjectButton id={p.id} title={p.title} />
             </div>
           </div>
         ))}

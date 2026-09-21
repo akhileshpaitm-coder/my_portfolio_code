@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import nodemailer from "nodemailer";
+import { getTransporter, escapeHtml } from "@/lib/mailer";
+import { saveContactMessage, setMessageEmailMessageId } from "@/lib/contact";
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,16 +27,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, errors }, { status: 400 });
     }
 
+    // ── Save to history first (keeps the message even if SMTP fails) ──
+    let savedId: number | null = null;
+    try {
+      savedId = await saveContactMessage({
+        name: name.trim(),
+        email: email.trim(),
+        subject: subject.trim(),
+        message: message.trim(),
+      });
+    } catch (dbErr) {
+      console.error("Failed to store contact message:", dbErr);
+    }
+
     // ── Send email via SMTP ─────────────────────────────
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure: process.env.SMTP_SECURE === "true",
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
+    // The notification email doubles as the thread anchor: its Message-ID is
+    // stored with the message so admin replies continue the same email
+    // conversation (In-Reply-To/References) instead of a separate thread.
+    const transporter = getTransporter();
 
     const mailOptions = {
       from: `"${escapeHtml(name)}" <${process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER}>`,
@@ -92,7 +101,16 @@ export async function POST(request: NextRequest) {
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    const info = await transporter.sendMail(mailOptions);
+
+    // Attach the thread anchor to the saved row (no-op if save failed).
+    if (savedId !== null && info?.messageId) {
+      try {
+        await setMessageEmailMessageId(savedId, info.messageId);
+      } catch (dbErr) {
+        console.error("Failed to store thread anchor Message-ID:", dbErr);
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -107,12 +125,5 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// ── Tiny HTML escaper ────────────────────────
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
+// ── Tiny HTML escaper (kept for route-local template use) ──
+// escapeHtml is imported from @/lib/mailer

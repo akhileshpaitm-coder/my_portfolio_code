@@ -1,4 +1,10 @@
-const skillsData = {
+import { getSkills, groupSkillsByCategory, type SkillGroup } from "@/lib/skills";
+
+/**
+ * Fallback data (the original hardcoded skills) — used when the DB has no
+ * skills yet or is unreachable, so the public section never renders empty.
+ */
+const fallbackData: Record<string, string[]> = {
   backend: [
     "Node.js", "NestJS", "PHP", "Laravel", "Python",
     "GraphQL", "Kafka", "TypeORM", "Prisma",
@@ -18,6 +24,45 @@ const skillsData = {
   ],
 };
 
+/** Display title for a category key (fallback keys use the old mapping). */
+function categoryTitle(key: string): string {
+  if (key === "devops") return "DevOps & Cloud";
+  if (key === "tools") return "Tools & Collaboration";
+  return key.charAt(0).toUpperCase() + key.slice(1);
+}
+
+const ICONS: Record<string, string> = {
+  Backend: "⚙️",
+  Frontend: "🎨",
+  Databases: "🗄️",
+  "DevOps & Cloud": "☁️",
+  "Tools & Collaboration": "🛠️",
+};
+
+const GRADIENTS: Record<string, string> = {
+  Backend: "#06b6d4 0%, #0891b2 100%",
+  Frontend: "#8b5cf6 0%, #6d28d9 100%",
+  Databases: "#ec4899 0%, #db2777 100%",
+  "DevOps & Cloud": "#f59e0b 0%, #d97706 100%",
+  "Tools & Collaboration": "#10b981 0%, #059669 100%",
+};
+
+/** Rotating gradients for admin-created categories. */
+const EXTRA_GRADIENTS = [
+  "#f43f5e 0%, #e11d48 100%",
+  "#14b8a6 0%, #0d9488 100%",
+  "#a855f7 0%, #9333ea 100%",
+  "#3b82f6 0%, #2563eb 100%",
+];
+
+function iconFor(title: string, index: number): string {
+  return ICONS[title] ?? ["🧩", "🚀", "📦", "💡"][index % 4];
+}
+
+function gradientFor(title: string, index: number): string {
+  return GRADIENTS[title] ?? EXTRA_GRADIENTS[index % EXTRA_GRADIENTS.length];
+}
+
 function SkillCard({
   title,
   skills,
@@ -31,7 +76,7 @@ function SkillCard({
 }) {
   return (
     <div
-      className="skill-card rounded-2xl p-6 md:p-7"
+      className="skill-card min-w-0 rounded-2xl p-6 md:p-7"
       style={{ animationDelay: `${0.1 + index * 0.1}s` }}
     >
       {/* Icon */}
@@ -42,18 +87,14 @@ function SkillCard({
           boxShadow: `0 4px 16px ${gradient.replace('50%', '20%')}`,
         }}
       >
-        {title === "Backend" && "⚙️"}
-        {title === "Frontend" && "🎨"}
-        {title === "Databases" && "🗄️"}
-        {title === "DevOps & Cloud" && "☁️"}
-        {title === "Tools & Collaboration" && "🛠️"}
+        {iconFor(title, index)}
       </div>
 
-      <h3 className="mb-4 text-lg font-semibold text-zinc-100">{title}</h3>
+      <h3 className="mb-4 break-words text-lg font-semibold text-zinc-100">{title}</h3>
 
       <div className="flex flex-wrap gap-2">
         {skills.map((skill) => (
-          <span key={skill} className="tag-chip">
+          <span key={skill} className="tag-chip max-w-full break-words">
             {skill}
           </span>
         ))}
@@ -62,14 +103,15 @@ function SkillCard({
   );
 }
 
-export default function SkillsSection() {
-  const gradients: Record<string, string> = {
-    Backend: "#06b6d4 0%, #0891b2 100%",
-    Frontend: "#8b5cf6 0%, #6d28d9 100%",
-    Databases: "#ec4899 0%, #db2777 100%",
-    "DevOps & Cloud": "#f59e0b 0%, #d97706 100%",
-    "Tools & Collaboration": "#10b981 0%, #059669 100%",
-  };
+export default async function SkillsSection() {
+  let groups: SkillGroup[];
+
+  try {
+    const skills = await getSkills();
+    groups = skills.length > 0 ? groupSkillsByCategory(skills) : fallbackFromStatic();
+  } catch {
+    groups = fallbackFromStatic();
+  }
 
   return (
     <section id="skills" className="relative px-4 py-28">
@@ -90,12 +132,12 @@ export default function SkillsSection() {
         </p>
 
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 stagger">
-          {Object.entries(skillsData).map(([key, skills], idx) => (
+          {groups.map((group, idx) => (
             <SkillCard
-              key={key}
-              title={key === "devops" ? "DevOps & Cloud" : key === "tools" ? "Tools & Collaboration" : key.charAt(0).toUpperCase() + key.slice(1)}
-              skills={skills}
-              gradient={gradients[key === "devops" ? "DevOps & Cloud" : key === "tools" ? "Tools & Collaboration" : key.charAt(0).toUpperCase() + key.slice(1)]}
+              key={group.category}
+              title={group.category}
+              skills={group.names}
+              gradient={gradientFor(group.category, idx)}
               index={idx}
             />
           ))}
@@ -103,4 +145,12 @@ export default function SkillsSection() {
       </div>
     </section>
   );
+}
+
+/** Fallback shape from the original hardcoded data. */
+function fallbackFromStatic(): SkillGroup[] {
+  return Object.entries(fallbackData).map(([key, names]) => ({
+    category: categoryTitle(key),
+    names,
+  }));
 }

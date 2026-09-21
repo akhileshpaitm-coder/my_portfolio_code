@@ -1,14 +1,34 @@
 import { auth } from "@/lib/auth";
+import { getSiteSettings } from "@/lib/settings";
+import SiteSettingsForm from "./SiteSettingsForm";
 
 /**
- * Settings page — session/security summary. Placeholder for future
- * account preferences.
+ * Settings page — session/security summary plus site settings
+ * (dashboard-managed homepage strings: Hero, Contact info, Footer).
  */
 export default async function SettingsPage() {
   const session = await auth();
 
+  if (session?.user?.role !== "admin") {
+    return (
+      <div className="mx-auto max-w-3xl">
+        <div className="glass rounded-2xl p-8 text-center">
+          <p className="text-3xl">🔒</p>
+          <h1 className="mt-3 text-lg font-semibold text-zinc-100">
+            Admin access required
+          </h1>
+          <p className="mt-1 text-sm text-zinc-500">
+            Your account does not have permission to manage site settings.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const settings = await getSiteSettings();
+
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-4xl">
       <div className="mb-4 flex items-center gap-4">
         <span className="text-sm font-semibold tracking-widest text-cyan-400 uppercase">
           Preferences
@@ -19,6 +39,19 @@ export default async function SettingsPage() {
         <span className="gradient-text">Settings</span>
       </h2>
 
+      {/* ── Site settings ── */}
+      <div className="glass mb-10 rounded-2xl p-6 sm:p-8">
+        <h3 className="mb-1 text-lg font-semibold text-zinc-100">
+          Site <span className="gradient-text">Settings</span>
+        </h3>
+        <p className="mb-6 text-xs text-zinc-500">
+          Edit the homepage strings — Hero badge, stats and tagline, contact
+          info, and footer social links. Changes go live immediately.
+        </p>
+        <SiteSettingsForm settings={settings} />
+      </div>
+
+      {/* ── Security summary ── */}
       <div className="glass rounded-2xl p-6 sm:p-8">
         <h3 className="mb-4 text-sm font-semibold text-zinc-200">
           Security

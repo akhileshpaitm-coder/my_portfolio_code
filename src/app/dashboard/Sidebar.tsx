@@ -43,6 +43,42 @@ const icons = {
       />
     </svg>
   ),
+  skills: (
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"
+      />
+    </svg>
+  ),
+  expertise: (
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"
+      />
+    </svg>
+  ),
+  about: (
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+      />
+    </svg>
+  ),
+  messages: (
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"
+      />
+    </svg>
+  ),
   portfolio: (
     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
       <path
@@ -57,6 +93,10 @@ const icons = {
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: icons.dashboard },
   { href: "/dashboard/projects", label: "Projects", icon: icons.projects },
+  { href: "/dashboard/skills", label: "Skills", icon: icons.skills },
+  { href: "/dashboard/expertise", label: "Expertise", icon: icons.expertise },
+  { href: "/dashboard/about", label: "About", icon: icons.about },
+  { href: "/dashboard/messages", label: "Messages", icon: icons.messages },
   { href: "/dashboard/profile", label: "Profile", icon: icons.profile },
   { href: "/dashboard/settings", label: "Settings", icon: icons.settings },
 ];
@@ -69,9 +109,12 @@ const navItems = [
 export default function Sidebar({
   open,
   onClose,
+  unreadCount = 0,
 }: {
   open: boolean;
   onClose: () => void;
+  /** Unread contact messages (admin only) — shown as a badge on Messages. */
+  unreadCount?: number;
 }) {
   const pathname = usePathname();
 
@@ -141,8 +184,17 @@ export default function Sidebar({
                   {item.icon}
                 </span>
                 {item.label}
-                {active && (
-                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500" />
+                {item.href === "/dashboard/messages" && unreadCount > 0 ? (
+                  <span
+                    className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 px-1.5 text-[10px] font-bold leading-none text-white"
+                    aria-label={`${unreadCount} unread message${unreadCount === 1 ? "" : "s"}`}
+                  >
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                ) : (
+                  active && (
+                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500" />
+                  )
                 )}
               </Link>
             );

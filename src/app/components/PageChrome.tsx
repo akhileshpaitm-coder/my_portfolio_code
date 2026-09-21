@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import MobileMenu from "./MobileMenu";
+import { getSiteSettings } from "@/lib/settings";
 
 const NAV_LINKS = [
   { href: "/about", label: "About" },
@@ -55,7 +56,8 @@ export function SiteNavbar({ active }: { active?: string }) {
   );
 }
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  const settings = await getSiteSettings();
   return (
     <footer className="border-t border-zinc-800/60 px-4 py-12">
       <div className="mx-auto max-w-5xl">
@@ -78,9 +80,7 @@ export function SiteFooter() {
               Full Stack Software Developer
             </p>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-zinc-500">
-              Building scalable, secure, and high-performance web &amp; mobile
-              applications for 6+ years — from enterprise platforms and
-              e-commerce to cloud solutions and real-time systems.
+              {settings.footer_blurb}
             </p>
           </div>
 
@@ -110,7 +110,7 @@ export function SiteFooter() {
             </h3>
             <div className="flex flex-wrap items-center gap-2.5">
               <a
-                href="https://github.com/akhileshpaitm-coder"
+                href={settings.footer_github_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="rounded-full border border-zinc-800 px-4 py-2 text-xs text-zinc-500 transition-all hover:border-zinc-600 hover:text-zinc-300 hover:bg-zinc-800/50"
@@ -118,7 +118,7 @@ export function SiteFooter() {
                 GitHub
               </a>
               <a
-                href="https://www.linkedin.com/in/akhilesh-prajapati-9a8682193"
+                href={settings.footer_linkedin_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="rounded-full border border-zinc-800 px-4 py-2 text-xs text-zinc-500 transition-all hover:border-zinc-600 hover:text-zinc-300 hover:bg-zinc-800/50"
@@ -126,7 +126,7 @@ export function SiteFooter() {
                 LinkedIn
               </a>
               <a
-                href="mailto:akhileshpaitm@gmail.com"
+                href={`mailto:${settings.contact_email}`}
                 className="rounded-full border border-zinc-800 px-4 py-2 text-xs text-zinc-500 transition-all hover:border-zinc-600 hover:text-zinc-300 hover:bg-zinc-800/50"
               >
                 Email

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import ConfirmDialog from "@/app/components/ConfirmDialog";
 import { logout } from "./actions";
 
 interface HeaderUser {
@@ -31,7 +32,15 @@ export default function Header({
   onMenuClick: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const logoutFormRef = useRef<HTMLFormElement>(null);
+
+  const handleLogoutConfirm = () => {
+    setLogoutOpen(false);
+    // Defer so the dialog unmounts before the server action redirects.
+    setTimeout(() => logoutFormRef.current?.requestSubmit(), 0);
+  };
 
   // Close the dropdown on outside click or Escape
   useEffect(() => {
@@ -164,12 +173,15 @@ export default function Header({
                 <div className="my-1.5 border-t border-zinc-800/60" />
 
                 {/* Logout */}
-                <form action={logout}>
-                  <button
-                    type="submit"
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300"
-                    role="menuitem"
-                  >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setLogoutOpen(true);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300"
+                  role="menuitem"
+                >
                     <svg
                       fill="none"
                       viewBox="0 0 24 24"
@@ -185,12 +197,26 @@ export default function Header({
                     </svg>
                     Logout
                   </button>
-                </form>
               </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Logout confirmation — rendered outside the dropdown so the form
+          survives the menu closing before the action runs. */}
+      <ConfirmDialog
+        open={logoutOpen}
+        title="Log out?"
+        description="You will need to sign in again to access the dashboard."
+        confirmLabel="Log out"
+        cancelLabel="Cancel"
+        tone="danger"
+        onConfirm={handleLogoutConfirm}
+        onCancel={() => setLogoutOpen(false)}
+      />
+
+      <form ref={logoutFormRef} action={logout} className="hidden" />
     </header>
   );
 }

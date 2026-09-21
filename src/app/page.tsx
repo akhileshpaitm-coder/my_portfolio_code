@@ -1,12 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import ContactSection from "./components/ContactSection";
+import BookingSection from "./components/BookingSection";
 import MobileMenu from "./components/MobileMenu";
 import AboutSection from "./components/sections/About";
 import SkillsSection from "./components/sections/Skills";
 import ExpertiseSection from "./components/sections/Expertise";
 import ProjectsSection from "./components/sections/Projects";
 import TechnologiesSection from "./components/sections/Technologies";
+import { getSiteSettings } from "@/lib/settings";
+import { isBookingEnabled } from "@/lib/calendar";
 
 function Navbar() {
   return (
@@ -61,7 +64,17 @@ function Navbar() {
 // ─────────────────────────────────────────────
 // Hero
 // ─────────────────────────────────────────────
-function HeroSection() {
+function HeroSection({
+  settings,
+}: {
+  settings: Awaited<ReturnType<typeof getSiteSettings>>;
+}) {
+  const stats = [
+    { value: settings.hero_stat1_value, label: settings.hero_stat1_label },
+    { value: settings.hero_stat2_value, label: settings.hero_stat2_label },
+    { value: settings.hero_stat3_value, label: settings.hero_stat3_label },
+  ];
+
   return (
     <section className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 pt-24">
       {/* Background blobs */}
@@ -82,7 +95,7 @@ function HeroSection() {
       <div className="relative z-10 mx-auto max-w-4xl text-center">
         {/* Badge */}
         <div className="mb-6 inline-block animate-fade-in rounded-full border border-cyan-500/20 bg-cyan-500/10 px-4 py-1.5 text-xs font-medium tracking-wide text-cyan-300">
-          ✦ 6+ Years of Experience
+          {settings.hero_badge}
         </div>
 
         {/* Name */}
@@ -92,7 +105,7 @@ function HeroSection() {
 
         {/* Tagline */}
         <p className="mx-auto mb-8 max-w-2xl text-lg leading-relaxed text-zinc-400 sm:text-xl animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-          Full Stack Software Developer specializing in building scalable, secure, and high-performance web &amp; mobile applications with modern technologies.
+          {settings.hero_tagline}
         </p>
 
         {/* CTAs */}
@@ -116,11 +129,7 @@ function HeroSection() {
 
         {/* Stats */}
         <div className="mt-16 grid grid-cols-3 gap-8 border-t border-zinc-800/60 pt-10 animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
-          {[
-            { value: "6+", label: "Years Experience" },
-            { value: "50+", label: "Projects Delivered" },
-            { value: "20+", label: "Technologies" },
-          ].map((stat) => (
+          {stats.map((stat) => (
             <div key={stat.label}>
               <div className="text-3xl font-bold gradient-text sm:text-4xl">{stat.value}</div>
               <div className="mt-1 text-xs text-zinc-500 sm:text-sm">{stat.label}</div>
@@ -151,7 +160,11 @@ const FOOTER_LINKS = [
   { href: "/contact", label: "Contact" },
 ];
 
-function Footer() {
+function Footer({
+  settings,
+}: {
+  settings: Awaited<ReturnType<typeof getSiteSettings>>;
+}) {
   return (
     <footer className="border-t border-zinc-800/60 px-4 py-12">
       <div className="mx-auto max-w-5xl">
@@ -174,9 +187,7 @@ function Footer() {
               Full Stack Software Developer
             </p>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-zinc-500">
-              Building scalable, secure, and high-performance web &amp; mobile
-              applications for 6+ years — from enterprise platforms and
-              e-commerce to cloud solutions and real-time systems.
+              {settings.footer_blurb}
             </p>
           </div>
 
@@ -206,7 +217,7 @@ function Footer() {
             </h3>
             <div className="flex flex-wrap items-center gap-2.5">
               <a
-                href="https://github.com/akhileshpaitm-coder"
+                href={settings.footer_github_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="rounded-full border border-zinc-800 px-4 py-2 text-xs text-zinc-500 transition-all hover:border-zinc-600 hover:text-zinc-300 hover:bg-zinc-800/50"
@@ -214,7 +225,7 @@ function Footer() {
                 GitHub
               </a>
               <a
-                href="https://www.linkedin.com/in/akhilesh-prajapati-9a8682193"
+                href={settings.footer_linkedin_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="rounded-full border border-zinc-800 px-4 py-2 text-xs text-zinc-500 transition-all hover:border-zinc-600 hover:text-zinc-300 hover:bg-zinc-800/50"
@@ -222,7 +233,7 @@ function Footer() {
                 LinkedIn
               </a>
               <a
-                href="mailto:akhileshpaitm@gmail.com"
+                href={`mailto:${settings.contact_email}`}
                 className="rounded-full border border-zinc-800 px-4 py-2 text-xs text-zinc-500 transition-all hover:border-zinc-600 hover:text-zinc-300 hover:bg-zinc-800/50"
               >
                 Email
@@ -250,18 +261,27 @@ function Footer() {
 // =============================================
 // PAGE
 // =============================================
-export default function Home() {
+export default async function Home() {
+  const settings = await getSiteSettings();
+  const bookingEnabled = isBookingEnabled(settings);
+
   return (
     <main className="bg-background">
       <Navbar />
-      <HeroSection />
+      <HeroSection settings={settings} />
       <AboutSection />
       <SkillsSection />
       <ExpertiseSection />
       <ProjectsSection />
       <TechnologiesSection />
-      <ContactSection />
-      <Footer />
+      {bookingEnabled && <BookingSection />}
+      <ContactSection
+        email={settings.contact_email}
+        location={settings.contact_location}
+        availability={settings.contact_availability}
+        responseNote={settings.contact_response_note}
+      />
+      <Footer settings={settings} />
     </main>
   );
 }

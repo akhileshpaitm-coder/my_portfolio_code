@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { countUnreadMessages } from "@/lib/contact";
 import DashboardShell from "./DashboardShell";
 
 export const metadata = {
@@ -22,6 +23,17 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
+  // Unread contact messages (admin only) — drives the sidebar badge.
+  // Wrapped so a missing table (migration pending) can't break the dashboard.
+  let unreadCount = 0;
+  if (session.user.role === "admin") {
+    try {
+      unreadCount = await countUnreadMessages();
+    } catch {
+      unreadCount = 0;
+    }
+  }
+
   return (
     <DashboardShell
       user={{
@@ -29,6 +41,7 @@ export default async function DashboardLayout({
         email: session.user.email ?? "",
         role: session.user.role,
       }}
+      unreadCount={unreadCount}
     >
       {children}
     </DashboardShell>

@@ -6,10 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:migrate": "node scripts/migrate.mjs",
+    "db:migrate:status": "node scripts/migrate.mjs --status"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "googleapis": "^181.0.0",
     "mysql2": "^3.24.4",
     "next": "16.2.10",
     "next-auth": "^5.0.0-beta.32",
