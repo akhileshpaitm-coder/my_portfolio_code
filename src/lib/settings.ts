@@ -1,6 +1,6 @@
 import "server-only";
-import type { RowDataPacket, ResultSetHeader } from "mysql2/promise";
-import pool from "@/lib/db";
+import { getDb } from "@/lib/db";
+import { SiteSetting } from "@/lib/entities";
 import {
   SETTING_DEFAULTS,
   SETTING_KEYS,
@@ -13,7 +13,9 @@ export type { SettingKey, SiteSettings } from "./settings-schema";
 
 /** All settings in the DB (unrecognized keys ignored). */
 async function getRawSettings(): Promise<Partial<Record<SettingKey, string>>> {
-  const [rows] = await pool.query<RowDataPacket[]>("SELECT `key`, `value` FROM site_settings");
+  const ds = await getDb();
+  const repo = ds.getMongoRepository(SiteSetting);
+  const rows = await repo.find({});
   const out: Partial<Record<SettingKey, string>> = {};
   for (const row of rows) {
     const k = row.key as SettingKey;
@@ -28,13 +30,13 @@ export async function getSiteSettings(): Promise<SiteSettings> {
   try {
     raw = await getRawSettings();
   } catch {
-    // Table missing (migration pending) — defaults only.
+    // Collection missing (migration pending) — defaults only.
     raw = {};
   }
   return { ...SETTING_DEFAULTS, ...raw };
 }
 
-/** Persist a subset of settings in one round trip. */
+/** Persist a subset of settings with one upsert per changed key. */
 export async function updateSettings(
   values: Partial<Record<SettingKey, string>>
 ): Promise<void> {
@@ -43,10 +45,15 @@ export async function updateSettings(
   );
   if (entries.length === 0) return;
 
-  await pool.query<ResultSetHeader>(
-    `INSERT INTO site_settings (\`key\`, \`value\`) VALUES ${entries
-      .map(() => "(?, ?)")
-      .join(", ")} ON DUPLICATE KEY UPDATE \`value\` = VALUES(\`value\`)`,
-    entries.flatMap(([k, v]) => [k, v ?? ""])
+  const ds = await getDb();
+  const repo = ds.getMongoRepository(SiteSetting);
+  await Promise.all(
+    entries.map(([k, v]) =>
+      repo.updateMany(
+        { key: k },
+        { $set: { key: k, value: v ?? "", updated_at: new Date() } },
+        { upsert: true }
+      )
+    )
   );
 }

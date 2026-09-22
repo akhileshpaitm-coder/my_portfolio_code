@@ -1,10 +1,11 @@
 import "server-only";
-import type { RowDataPacket, ResultSetHeader } from "mysql2/promise";
-import pool from "@/lib/db";
+import type { Filter, Sort, WithId } from "mongodb";
+import { getDb, getNativeDb, nextId } from "@/lib/db";
+import { ContactMessage as ContactMessageEntity, ContactReply as ContactReplyEntity } from "@/lib/entities";
 
 export type MessageStatus = "new" | "read" | "replied";
 
-export interface ContactMessage {
+export interface ContactMessageItem {
   id: number;
   name: string;
   email: string;
@@ -27,9 +28,26 @@ export interface ContactReply {
   email_message_id?: string | null;
 }
 
-interface MessageRow extends RowDataPacket, ContactMessage {}
+export type { ContactMessageItem as ContactMessage };
 
-function toMessage(row: MessageRow): ContactMessage {
+type MessageStored = ContactMessageItem & { _id?: unknown };
+type ContactStored = WithId<MessageStored>;
+
+const MESSAGE_PROJECTION = {
+  projection: {
+    _id: 0,
+    id: 1,
+    name: 1,
+    email: 1,
+    subject: 1,
+    message: 1,
+    status: 1,
+    created_at: 1,
+    email_message_id: 1,
+  },
+};
+
+function toMessage(row: MessageStored): ContactMessageItem {
   return {
     id: row.id,
     name: row.name,
@@ -37,13 +55,13 @@ function toMessage(row: MessageRow): ContactMessage {
     subject: row.subject,
     message: row.message,
     status: row.status,
-    created_at: row.created_at,
+    created_at: new Date(row.created_at),
     email_message_id: row.email_message_id ?? null,
   };
 }
 
 export interface MessagesPageResult {
-  messages: ContactMessage[];
+  messages: ContactMessageItem[];
   /** Count for the active status filter. */
   total: number;
   /** Count across all statuses. */
@@ -54,19 +72,18 @@ export interface MessagesPageResult {
   pageSize: number;
 }
 
-interface CountRow extends RowDataPacket {
-  status: string;
-  n: number;
-}
-
-/** Per-status message counts from a single GROUP BY (0 for missing statuses). */
+/** Per-status message counts from one aggregation (0 for missing statuses). */
 async function getStatusCounts(): Promise<Record<MessageStatus, number>> {
-  const [countRows] = await pool.query<CountRow[]>(
-    "SELECT status, COUNT(*) AS n FROM contact_messages GROUP BY status"
-  );
+  const db = await getNativeDb();
+  const countRows = await db
+    .collection("contact_messages")
+    .aggregate<{ _id: string; n: number }>([
+      { $group: { _id: "$status", n: { $sum: 1 } } },
+    ])
+    .toArray();
   const counts: Record<MessageStatus, number> = { new: 0, read: 0, replied: 0 };
   for (const row of countRows) {
-    const s = row.status as MessageStatus;
+    const s = row._id as MessageStatus;
     if (s === "new" || s === "read" || s === "replied") counts[s] = Number(row.n);
   }
   return counts;
@@ -85,8 +102,8 @@ export async function getContactStatusCounts(): Promise<{
 
 /**
  * One page of messages for the admin inbox. Unread ("new") messages sort
- * first, then newest-first. Per-status counts come from a single GROUP BY so
- * the UI can render filter tabs and pagination without loading every row.
+ * first, then newest-first. Per-status counts come from a single aggregation
+ * so the UI can render filter tabs and pagination without loading every row.
  */
 export async function getContactMessagesPage(options: {
   status?: MessageStatus;
@@ -106,19 +123,30 @@ export async function getContactMessagesPage(options: {
 
   // Clamp bad/deep links into the valid page range.
   const page = Math.min(totalPages, Math.max(1, Math.floor(options.page ?? 1)));
-  const offset = (page - 1) * pageSize;
+  const skip = (page - 1) * pageSize;
 
-  const where = options.status ? "WHERE status = ?" : "";
-  const params = options.status ? [options.status] : [];
-  // LIMIT/OFFSET are validated integers interpolated inline (mysql2's query()
-  // mishandles placeholder LIMIT values).
-  const [rows] = await pool.query<MessageRow[]>(
-    `SELECT id, name, email, subject, message, status, created_at
-     FROM contact_messages ${where}
-     ORDER BY (status = 'new') DESC, created_at DESC, id DESC
-     LIMIT ${pageSize} OFFSET ${offset}`,
-    params
-  );
+  const query: Filter<MessageStored> = options.status
+    ? { status: options.status }
+    : {};
+  // Unread first, then newest-first, then highest id — same as the old SQL.
+  const sort: Sort = { status_new: -1, created_at: -1, id: -1 };
+
+  const db = await getNativeDb();
+  const rows = await db
+    .collection("contact_messages")
+    .aggregate<MessageStored>([
+      { $match: query },
+      {
+        $addFields: {
+          status_new: { $cond: [{ $eq: ["$status", "new"] }, 1, 0] },
+        },
+      },
+      { $sort: sort },
+      { $skip: skip },
+      { $limit: pageSize },
+      { $project: MESSAGE_PROJECTION.projection },
+    ])
+    .toArray();
 
   return {
     messages: rows.map(toMessage),
@@ -133,12 +161,12 @@ export async function getContactMessagesPage(options: {
 
 export async function getContactMessageById(
   id: number
-): Promise<ContactMessage | null> {
-  const [rows] = await pool.query<MessageRow[]>(
-    "SELECT id, name, email, subject, message, status, created_at FROM contact_messages WHERE id = ? LIMIT 1",
-    [id]
-  );
-  return rows[0] ? toMessage(rows[0]) : null;
+): Promise<ContactMessageItem | null> {
+  const db = await getNativeDb();
+  const row = await db
+    .collection<ContactStored>("contact_messages")
+    .findOne({ id }, MESSAGE_PROJECTION);
+  return row ? toMessage(row) : null;
 }
 
 /** Persist a contact form submission. Returns the new message id. */
@@ -150,11 +178,22 @@ export async function saveContactMessage(input: {
   /** Message-ID of the notification email that announced this message. */
   emailMessageId?: string | null;
 }): Promise<number> {
-  const [result] = await pool.query<ResultSetHeader>(
-    "INSERT INTO contact_messages (name, email, subject, message, email_message_id) VALUES (?, ?, ?, ?, ?)",
-    [input.name, input.email, input.subject, input.message, input.emailMessageId ?? null]
-  );
-  return result.insertId;
+  const ds = await getDb();
+  const repo = ds.getMongoRepository(ContactMessageEntity);
+  const id = await nextId("contact_messages");
+  const now = new Date();
+  await repo.insertOne({
+    id,
+    name: input.name,
+    email: input.email,
+    subject: input.subject,
+    message: input.message,
+    status: "new",
+    email_message_id: input.emailMessageId ?? null,
+    created_at: now,
+    updated_at: now,
+  });
+  return id;
 }
 
 /** new → read, read → new (replied stays replied). */
@@ -162,24 +201,46 @@ export async function toggleMessageRead(
   id: number,
   read: boolean
 ): Promise<boolean> {
-  const [result] = await pool.query<ResultSetHeader>(
-    "UPDATE contact_messages SET status = ? WHERE id = ? AND status <> 'replied'",
-    [read ? "read" : "new", id]
+  const ds = await getDb();
+  const repo = ds.getMongoRepository(ContactMessageEntity);
+  const result = await repo.updateMany(
+    { id, status: { $ne: "replied" } },
+    { $set: { status: read ? "read" : "new", updated_at: new Date() } }
   );
-  return result.affectedRows > 0;
+  return (result.modifiedCount ?? 0) > 0;
 }
-
-interface ReplyRow extends RowDataPacket, ContactReply {}
 
 /** Full reply history for a message, oldest first (thread order). */
 export async function getMessageReplies(
   messageId: number
 ): Promise<ContactReply[]> {
-  const [rows] = await pool.query<ReplyRow[]>(
-    "SELECT id, message_id, subject, body, created_at FROM contact_replies WHERE message_id = ? ORDER BY created_at ASC, id ASC",
-    [messageId]
-  );
-  return rows;
+  const db = await getNativeDb();
+  const rows = await db
+    .collection("contact_replies")
+    .find(
+      { message_id: messageId },
+      {
+        projection: {
+          _id: 0,
+          id: 1,
+          message_id: 1,
+          subject: 1,
+          body: 1,
+          created_at: 1,
+          email_message_id: 1,
+        },
+      }
+    )
+    .sort({ created_at: 1, id: 1 })
+    .toArray();
+  return rows.map((r) => ({
+    id: r.id,
+    message_id: r.message_id,
+    subject: r.subject,
+    body: r.body,
+    created_at: new Date(r.created_at),
+    email_message_id: r.email_message_id ?? null,
+  }));
 }
 
 /** Append a reply to the thread and mark the message replied. */
@@ -189,16 +250,32 @@ export async function addMessageReply(
   replyBody: string,
   emailMessageId?: string | null
 ): Promise<boolean> {
-  const [result] = await pool.query<ResultSetHeader>(
-    "INSERT INTO contact_replies (message_id, subject, body, email_message_id) VALUES (?, ?, ?, ?)",
-    [id, replySubject, replyBody, emailMessageId ?? null]
-  );
-  if (result.affectedRows === 0) return false;
+  const db = await getNativeDb();
 
-  await pool.query(
-    "UPDATE contact_messages SET status = 'replied' WHERE id = ? AND status <> 'replied'",
-    [id]
-  );
+  // The parent must exist — mirrors the old FK constraint behavior.
+  const parent = await db
+    .collection("contact_messages")
+    .findOne({ id }, { projection: { _id: 1 } });
+  if (!parent) return false;
+
+  const ds = await getDb();
+  const replyRepo = ds.getMongoRepository(ContactReplyEntity);
+  const replyId = await nextId("contact_replies");
+  await replyRepo.insertOne({
+    id: replyId,
+    message_id: id,
+    subject: replySubject,
+    body: replyBody,
+    email_message_id: emailMessageId ?? null,
+    created_at: new Date(),
+  });
+
+  await db
+    .collection("contact_messages")
+    .updateMany(
+      { id, status: { $ne: "replied" } },
+      { $set: { status: "replied", updated_at: new Date() } }
+    );
   return true;
 }
 
@@ -210,9 +287,11 @@ export async function setMessageEmailMessageId(
   id: number,
   emailMessageId: string
 ): Promise<void> {
-  await pool.query<ResultSetHeader>(
-    "UPDATE contact_messages SET email_message_id = ? WHERE id = ?",
-    [emailMessageId, id]
+  const ds = await getDb();
+  const repo = ds.getMongoRepository(ContactMessageEntity);
+  await repo.updateMany(
+    { id },
+    { $set: { email_message_id: emailMessageId, updated_at: new Date() } }
   );
 }
 
@@ -222,16 +301,23 @@ export async function setMessageEmailMessageId(
  * every reply in the same conversation.
  */
 export async function getThreadMessageIds(messageId: number): Promise<string[]> {
-  const [msgRows] = await pool.query<RowDataPacket[]>(
-    "SELECT email_message_id FROM contact_messages WHERE id = ? LIMIT 1",
-    [messageId]
-  );
-  const [replyRows] = await pool.query<RowDataPacket[]>(
-    "SELECT email_message_id FROM contact_replies WHERE message_id = ? AND email_message_id IS NOT NULL ORDER BY created_at ASC, id ASC",
-    [messageId]
-  );
+  const db = await getNativeDb();
+  const msg = await db
+    .collection("contact_messages")
+    .findOne(
+      { id: messageId },
+      { projection: { _id: 0, email_message_id: 1 } }
+    );
+  const replyRows = await db
+    .collection("contact_replies")
+    .find(
+      { message_id: messageId, email_message_id: { $nin: [null, ""] } },
+      { projection: { _id: 0, email_message_id: 1 } }
+    )
+    .sort({ created_at: 1, id: 1 })
+    .toArray();
   const ids: string[] = [];
-  const original = msgRows[0]?.email_message_id;
+  const original = msg?.email_message_id;
   if (typeof original === "string" && original) ids.push(original);
   for (const r of replyRows) {
     if (typeof r.email_message_id === "string" && r.email_message_id)
@@ -241,18 +327,20 @@ export async function getThreadMessageIds(messageId: number): Promise<string[]> 
 }
 
 export async function deleteContactMessage(id: number): Promise<boolean> {
-  const [result] = await pool.query<ResultSetHeader>(
-    "DELETE FROM contact_messages WHERE id = ?",
-    [id]
-  );
-  return result.affectedRows > 0;
+  const db = await getNativeDb();
+
+  // Cascade: remove the thread's replies with the message (was ON DELETE CASCADE).
+  await db.collection("contact_replies").deleteMany({ message_id: id });
+
+  const ds = await getDb();
+  const repo = ds.getMongoRepository(ContactMessageEntity);
+  const result = await repo.deleteMany({ id });
+  return (result.deletedCount ?? 0) > 0;
 }
 
 export async function countUnreadMessages(): Promise<number> {
-  const [rows] = await pool.query<RowDataPacket[]>(
-    "SELECT COUNT(*) AS n FROM contact_messages WHERE status = 'new'"
-  );
-  return Number((rows[0] as { n: number } | undefined)?.n ?? 0);
+  const db = await getNativeDb();
+  return db.collection("contact_messages").countDocuments({ status: "new" });
 }
 
 /** Newest unread message summary — drives the "new message" toast. */
@@ -262,11 +350,11 @@ export async function getLatestUnreadMessage(): Promise<{
   subject: string;
   created_at: Date;
 } | null> {
-  const [rows] = await pool.query<MessageRow[]>(
-    "SELECT id, name, email, subject, message, status, created_at FROM contact_messages WHERE status = 'new' ORDER BY created_at DESC, id DESC LIMIT 1"
-  );
-  const row = rows[0];
+  const db = await getNativeDb();
+  const row = await db
+    .collection("contact_messages")
+    .findOne({ status: "new" }, { ...MESSAGE_PROJECTION, sort: { created_at: -1, id: -1 } });
   return row
-    ? { id: row.id, name: row.name, subject: row.subject, created_at: row.created_at }
+    ? { id: row.id, name: row.name, subject: row.subject, created_at: new Date(row.created_at) }
     : null;
 }

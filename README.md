@@ -18,16 +18,22 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font) from Vercel.
 
-## Learn More
+## Database
 
-To learn more about Next.js, take a look at the following resources:
+MongoDB, accessed through **TypeORM** (`src/lib/db.ts`, entities in
+`src/lib/entities/`). Set `MONGODB_URI` and `DB_NAME` in `.env.local`, then
+create the collections (one migration script per collection, tracked in the
+`_migrations` collection):
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run db:migrate:status   # preview applied/pending scripts
+npm run db:migrate          # apply pending migrations
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Seeds (admin user, skills, projects, site settings…) are included in the
+migrations and are inserted only when missing.
 
 ## Deployment
 
@@ -35,8 +41,3 @@ Before every production release, run through the checklist in
 [DEPLOYMENT.md](./DEPLOYMENT.md) — database migrations (apply **before**
 shipping new code), environment variables, build steps, and post-deploy
 verification.
-
-> The dashboard-managed content (Expertise, About, Site Settings, etc.)
-> depends on migration scripts added in this release — `expertise-migration.sql`,
-> `about-migration.sql`, and `site-settings-migration.sql` are the ones most
-> likely missing on an existing production database.

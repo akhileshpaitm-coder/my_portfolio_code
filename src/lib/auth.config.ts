@@ -1,7 +1,6 @@
 import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { getUserByEmail } from "@/lib/db";
 
 /**
  * Shareable NextAuth config (no `auth()` export — safe to import from
@@ -32,6 +31,10 @@ export const authConfig = {
         if (!email || !password) return null;
 
         try {
+          // Lazy import: keeps @/lib/db (TypeORM/MongoDB) out of the
+          // middleware/proxy bundle so the DataSource singleton — and its
+          // entity-class identity — lives only in the server bundle.
+          const { getUserByEmail } = await import("@/lib/db");
           const user = await getUserByEmail(email);
           if (!user) return null;
 

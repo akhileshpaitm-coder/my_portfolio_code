@@ -61,7 +61,7 @@ export default async function SettingsPage() {
             {
               label: "Authentication",
               value: "NextAuth.js (Credentials + JWT)",
-              desc: "Password verified against the MySQL users table",
+              desc: "Password verified against the users collection (MongoDB)",
             },
             {
               label: "Session",

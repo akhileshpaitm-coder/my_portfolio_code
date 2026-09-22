@@ -1,7 +1,10 @@
 import "server-only";
 import type { ReactNode } from "react";
-import type { RowDataPacket, ResultSetHeader } from "mysql2/promise";
-import pool from "@/lib/db";
+import { getDb, getNativeDb, nextId } from "@/lib/db";
+import {
+  AboutParagraph as AboutParagraphEntity,
+  CoreValue as CoreValueEntity,
+} from "@/lib/entities";
 
 export interface AboutParagraph {
   id: number;
@@ -20,26 +23,35 @@ export interface CoreValue {
   sort_order: number;
 }
 
-interface AboutParagraphRow extends RowDataPacket, AboutParagraph {}
-interface CoreValueRow extends RowDataPacket, CoreValue {}
+type AboutParagraphStored = AboutParagraph & { _id?: unknown };
+type CoreValueStored = CoreValue & { _id?: unknown };
 
 /* ─────────────────────────────────────────────
  * Paragraphs
  * ───────────────────────────────────────────── */
 
 export async function getAboutParagraphs(): Promise<AboutParagraph[]> {
-  const [rows] = await pool.query<AboutParagraphRow[]>(
-    "SELECT id, body, emphasized, sort_order FROM about_paragraphs ORDER BY sort_order, id"
-  );
+  const db = await getNativeDb();
+  const rows = await db
+    .collection<AboutParagraphStored>("about_paragraphs")
+    .find(
+      {},
+      { projection: { _id: 0, id: 1, body: 1, emphasized: 1, sort_order: 1 } }
+    )
+    .sort({ sort_order: 1, id: 1 })
+    .toArray();
   return rows;
 }
 
 export async function getAboutParagraphById(id: number): Promise<AboutParagraph | null> {
-  const [rows] = await pool.query<AboutParagraphRow[]>(
-    "SELECT id, body, emphasized, sort_order FROM about_paragraphs WHERE id = ? LIMIT 1",
-    [id]
-  );
-  return rows[0] ?? null;
+  const db = await getNativeDb();
+  const row = await db
+    .collection<AboutParagraphStored>("about_paragraphs")
+    .findOne(
+      { id },
+      { projection: { _id: 0, id: 1, body: 1, emphasized: 1, sort_order: 1 } }
+    );
+  return row ?? null;
 }
 
 export async function createAboutParagraph(input: {
@@ -47,37 +59,57 @@ export async function createAboutParagraph(input: {
   emphasized: boolean;
   sort_order: number;
 }): Promise<number> {
-  const [result] = await pool.query<ResultSetHeader>(
-    "INSERT INTO about_paragraphs (body, emphasized, sort_order) VALUES (?, ?, ?)",
-    [input.body, input.emphasized ? 1 : 0, input.sort_order]
-  );
-  return result.insertId;
+  const ds = await getDb();
+  const repo = ds.getMongoRepository(AboutParagraphEntity);
+  const id = await nextId("about_paragraphs");
+  const now = new Date();
+  await repo.insertOne({
+    id,
+    body: input.body,
+    emphasized: input.emphasized,
+    sort_order: input.sort_order,
+    created_at: now,
+    updated_at: now,
+  });
+  return id;
 }
 
 export async function updateAboutParagraph(
   id: number,
   input: { body: string; emphasized: boolean; sort_order: number }
 ): Promise<boolean> {
-  const [result] = await pool.query<ResultSetHeader>(
-    "UPDATE about_paragraphs SET body = ?, emphasized = ?, sort_order = ? WHERE id = ?",
-    [input.body, input.emphasized ? 1 : 0, input.sort_order, id]
+  const ds = await getDb();
+  const repo = ds.getMongoRepository(AboutParagraphEntity);
+  const result = await repo.updateMany(
+    { id },
+    {
+      $set: {
+        body: input.body,
+        emphasized: input.emphasized,
+        sort_order: input.sort_order,
+        updated_at: new Date(),
+      },
+    }
   );
-  return result.affectedRows > 0;
+  return (result.modifiedCount ?? 0) > 0;
 }
 
 export async function deleteAboutParagraph(id: number): Promise<boolean> {
-  const [result] = await pool.query<ResultSetHeader>(
-    "DELETE FROM about_paragraphs WHERE id = ?",
-    [id]
-  );
-  return result.affectedRows > 0;
+  const ds = await getDb();
+  const repo = ds.getMongoRepository(AboutParagraphEntity);
+  const result = await repo.deleteMany({ id });
+  return (result.deletedCount ?? 0) > 0;
 }
 
 export async function nextAboutParagraphSortOrder(): Promise<number> {
-  const [rows] = await pool.query<RowDataPacket[]>(
-    "SELECT MAX(sort_order) AS max FROM about_paragraphs"
-  );
-  const max = (rows[0] as { max: number | null } | undefined)?.max ?? 0;
+  const db = await getNativeDb();
+  const rows = await db
+    .collection("about_paragraphs")
+    .aggregate<{ max: number | null }>([
+      { $group: { _id: null, max: { $max: "$sort_order" } } },
+    ])
+    .toArray();
+  const max = rows[0]?.max ?? 0;
   return max + 1;
 }
 
@@ -86,18 +118,45 @@ export async function nextAboutParagraphSortOrder(): Promise<number> {
  * ───────────────────────────────────────────── */
 
 export async function getCoreValues(): Promise<CoreValue[]> {
-  const [rows] = await pool.query<CoreValueRow[]>(
-    "SELECT id, icon, title, description, sort_order FROM core_values ORDER BY sort_order, id"
-  );
+  const db = await getNativeDb();
+  const rows = await db
+    .collection<CoreValueStored>("core_values")
+    .find(
+      {},
+      {
+        projection: {
+          _id: 0,
+          id: 1,
+          icon: 1,
+          title: 1,
+          description: 1,
+          sort_order: 1,
+        },
+      }
+    )
+    .sort({ sort_order: 1, id: 1 })
+    .toArray();
   return rows;
 }
 
 export async function getCoreValueById(id: number): Promise<CoreValue | null> {
-  const [rows] = await pool.query<CoreValueRow[]>(
-    "SELECT id, icon, title, description, sort_order FROM core_values WHERE id = ? LIMIT 1",
-    [id]
-  );
-  return rows[0] ?? null;
+  const db = await getNativeDb();
+  const row = await db
+    .collection<CoreValueStored>("core_values")
+    .findOne(
+      { id },
+      {
+        projection: {
+          _id: 0,
+          id: 1,
+          icon: 1,
+          title: 1,
+          description: 1,
+          sort_order: 1,
+        },
+      }
+    );
+  return row ?? null;
 }
 
 export async function createCoreValue(input: {
@@ -106,37 +165,59 @@ export async function createCoreValue(input: {
   description: string;
   sort_order: number;
 }): Promise<number> {
-  const [result] = await pool.query<ResultSetHeader>(
-    "INSERT INTO core_values (icon, title, description, sort_order) VALUES (?, ?, ?, ?)",
-    [input.icon, input.title, input.description, input.sort_order]
-  );
-  return result.insertId;
+  const ds = await getDb();
+  const repo = ds.getMongoRepository(CoreValueEntity);
+  const id = await nextId("core_values");
+  const now = new Date();
+  await repo.insertOne({
+    id,
+    icon: input.icon,
+    title: input.title,
+    description: input.description,
+    sort_order: input.sort_order,
+    created_at: now,
+    updated_at: now,
+  });
+  return id;
 }
 
 export async function updateCoreValue(
   id: number,
   input: { icon: string; title: string; description: string; sort_order: number }
 ): Promise<boolean> {
-  const [result] = await pool.query<ResultSetHeader>(
-    "UPDATE core_values SET icon = ?, title = ?, description = ?, sort_order = ? WHERE id = ?",
-    [input.icon, input.title, input.description, input.sort_order, id]
+  const ds = await getDb();
+  const repo = ds.getMongoRepository(CoreValueEntity);
+  const result = await repo.updateMany(
+    { id },
+    {
+      $set: {
+        icon: input.icon,
+        title: input.title,
+        description: input.description,
+        sort_order: input.sort_order,
+        updated_at: new Date(),
+      },
+    }
   );
-  return result.affectedRows > 0;
+  return (result.modifiedCount ?? 0) > 0;
 }
 
 export async function deleteCoreValue(id: number): Promise<boolean> {
-  const [result] = await pool.query<ResultSetHeader>(
-    "DELETE FROM core_values WHERE id = ?",
-    [id]
-  );
-  return result.affectedRows > 0;
+  const ds = await getDb();
+  const repo = ds.getMongoRepository(CoreValueEntity);
+  const result = await repo.deleteMany({ id });
+  return (result.deletedCount ?? 0) > 0;
 }
 
 export async function nextCoreValueSortOrder(): Promise<number> {
-  const [rows] = await pool.query<RowDataPacket[]>(
-    "SELECT MAX(sort_order) AS max FROM core_values"
-  );
-  const max = (rows[0] as { max: number | null } | undefined)?.max ?? 0;
+  const db = await getNativeDb();
+  const rows = await db
+    .collection("core_values")
+    .aggregate<{ max: number | null }>([
+      { $group: { _id: null, max: { $max: "$sort_order" } } },
+    ])
+    .toArray();
+  const max = rows[0]?.max ?? 0;
   return max + 1;
 }
 

@@ -1,7 +1,7 @@
 import "server-only";
-import mysql from "mysql2/promise";
-import type { RowDataPacket, ResultSetHeader } from "mysql2/promise";
-import pool from "@/lib/db";
+import type { Document, Filter } from "mongodb";
+import { getDb, getNativeDb, nextId } from "@/lib/db";
+import { Skill as SkillEntity } from "@/lib/entities";
 
 export interface Skill {
   id: number;
@@ -10,19 +10,25 @@ export interface Skill {
   sort_order: number;
 }
 
-interface SkillRow extends RowDataPacket {
-  id: number;
-  category: string;
-  name: string;
-  sort_order: number;
-}
+type SkillStored = Document & Skill;
 
 /** All skills ordered for display (cards order by min sort per category). */
 export async function getSkills(): Promise<Skill[]> {
-  const [rows] = await pool.query<SkillRow[]>(
-    "SELECT id, category, name, sort_order FROM skills ORDER BY sort_order, name, id"
-  );
-  return rows;
+  const db = await getNativeDb();
+  const rows = await db
+    .collection<SkillStored>("skills")
+    .find(
+      {},
+      { projection: { _id: 0, id: 1, category: 1, name: 1, sort_order: 1 } }
+    )
+    .sort({ sort_order: 1, name: 1, id: 1 })
+    .toArray();
+  return rows.map((r) => ({
+    id: r.id,
+    category: r.category,
+    name: r.name,
+    sort_order: r.sort_order,
+  }));
 }
 
 /**
@@ -32,12 +38,13 @@ export async function getSkills(): Promise<Skill[]> {
 export async function getSkillNames(
   excludeId?: number
 ): Promise<Array<{ category: string; name: string }>> {
-  const [rows] = await pool.query<RowDataPacket[]>(
-    excludeId !== undefined
-      ? "SELECT category, name FROM skills WHERE id <> ?"
-      : "SELECT category, name FROM skills",
-    excludeId !== undefined ? [excludeId] : []
-  );
+  const db = await getNativeDb();
+  const query: Filter<SkillStored> =
+    excludeId !== undefined ? { id: { $ne: excludeId } } : {};
+  const rows = await db
+    .collection<SkillStored>("skills")
+    .find(query, { projection: { _id: 0, category: 1, name: 1 } })
+    .toArray();
   return rows.map((r) => ({
     category: String(r.category ?? "").trim(),
     name: String(r.name ?? "").trim(),
@@ -46,18 +53,25 @@ export async function getSkillNames(
 
 /** Distinct category names (for the form's category suggestions). */
 export async function getSkillCategories(): Promise<string[]> {
-  const [rows] = await pool.query<RowDataPacket[]>(
-    "SELECT category FROM skills GROUP BY category ORDER BY MIN(sort_order)"
-  );
-  return rows.map((r) => String(r.category ?? "").trim()).filter(Boolean);
+  const db = await getNativeDb();
+  const values = await db.collection("skills").distinct("category");
+  return values
+    .map((v) => String(v ?? "").trim())
+    .filter(Boolean)
+    .sort();
 }
 
 export async function getSkillById(id: number): Promise<Skill | null> {
-  const [rows] = await pool.query<SkillRow[]>(
-    "SELECT id, category, name, sort_order FROM skills WHERE id = ? LIMIT 1",
-    [id]
-  );
-  return rows[0] ?? null;
+  const db = await getNativeDb();
+  const row = await db
+    .collection<SkillStored>("skills")
+    .findOne(
+      { id },
+      { projection: { _id: 0, id: 1, category: 1, name: 1, sort_order: 1 } }
+    );
+  return row
+    ? { id: row.id, category: row.category, name: row.name, sort_order: row.sort_order }
+    : null;
 }
 
 export interface SkillInput {
@@ -67,34 +81,54 @@ export interface SkillInput {
 }
 
 export async function createSkill(input: SkillInput): Promise<number> {
-  const [result] = await pool.query<ResultSetHeader>(
-    "INSERT INTO skills (category, name, sort_order) VALUES (?, ?, ?)",
-    [input.category, input.name, input.sort_order]
-  );
-  return result.insertId;
+  const ds = await getDb();
+  const repo = ds.getMongoRepository(SkillEntity);
+  const id = await nextId("skills");
+  const now = new Date();
+  await repo.insertOne({
+    id,
+    category: input.category,
+    name: input.name,
+    sort_order: input.sort_order,
+    created_at: now,
+    updated_at: now,
+  });
+  return id;
 }
 
 export async function updateSkill(id: number, input: SkillInput): Promise<boolean> {
-  const [result] = await pool.query<ResultSetHeader>(
-    "UPDATE skills SET category = ?, name = ?, sort_order = ? WHERE id = ?",
-    [input.category, input.name, input.sort_order, id]
+  const ds = await getDb();
+  const repo = ds.getMongoRepository(SkillEntity);
+  const result = await repo.updateMany(
+    { id },
+    {
+      $set: {
+        category: input.category,
+        name: input.name,
+        sort_order: input.sort_order,
+        updated_at: new Date(),
+      },
+    }
   );
-  return result.affectedRows > 0;
+  return (result.modifiedCount ?? 0) > 0;
 }
 
 export async function deleteSkill(id: number): Promise<boolean> {
-  const [result] = await pool.query<ResultSetHeader>(
-    "DELETE FROM skills WHERE id = ?",
-    [id]
-  );
-  return result.affectedRows > 0;
+  const ds = await getDb();
+  const repo = ds.getMongoRepository(SkillEntity);
+  const result = await repo.deleteMany({ id });
+  return (result.deletedCount ?? 0) > 0;
 }
 
 export async function nextSkillSortOrder(): Promise<number> {
-  const [rows] = await pool.query<RowDataPacket[]>(
-    "SELECT MAX(sort_order) AS max FROM skills"
-  );
-  const max = (rows[0] as { max: number | null } | undefined)?.max ?? 0;
+  const db = await getNativeDb();
+  const rows = await db
+    .collection("skills")
+    .aggregate<{ max: number | null }>([
+      { $group: { _id: null, max: { $max: "$sort_order" } } },
+    ])
+    .toArray();
+  const max = rows[0]?.max ?? 0;
   return max + 1;
 }
 

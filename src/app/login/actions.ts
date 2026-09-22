@@ -10,7 +10,7 @@ export interface LoginState {
 /**
  * Server Action for the login form.
  * Calls NextAuth's signIn("credentials") which validates the credentials
- * against the MySQL users table (bcrypt). On success the JWT session cookie
+ * against the users collection in MongoDB (bcrypt). On success the JWT session cookie
  * is set and the user is redirected to the dashboard (or their original
  * callbackUrl).
  *
