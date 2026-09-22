@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { setActionToast } from "@/lib/action-toast";
 import {
   getContactMessageById,
   getThreadMessageIds,
@@ -47,6 +48,11 @@ export async function deleteMessageAction(formData: FormData): Promise<void> {
   const id = Number(formData.get("id"));
   if (Number.isInteger(id) && id > 0) {
     await deleteContactMessage(id);
+    await setActionToast({
+      variant: "success",
+      title: "Message deleted",
+      description: "The message and its reply history were removed.",
+    });
     revalidatePath("/dashboard/messages");
     revalidatePath("/dashboard", "layout");
   }

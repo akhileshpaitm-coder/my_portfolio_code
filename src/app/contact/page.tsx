@@ -9,12 +9,15 @@ export const metadata: Metadata = {
     "Get in touch — available for full-stack development projects and collaborations.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function ContactPage() {
   const settings = await getSiteSettings();
 
   return (
     <main className="bg-background">
       <SiteNavbar active="/contact" />
+
       <div className="pt-28">
         <ContactSection
           email={settings.contact_email}
@@ -23,6 +26,7 @@ export default async function ContactPage() {
           responseNote={settings.contact_response_note}
         />
       </div>
+
       <SiteFooter />
     </main>
   );

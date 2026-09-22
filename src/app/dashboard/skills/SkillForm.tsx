@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useEffect, useRef, useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { useToast } from "@/app/components/toast";
 import {
   createSkillAction,
   updateSkillAction,
@@ -79,11 +80,21 @@ function SubmitButton({ isEdit }: { isEdit: boolean }) {
 }
 
 export default function SkillForm({ mode, values, existingNames, categories }: SkillFormProps) {
+  const toast = useToast();
   const action = mode === "create" ? createSkillAction : updateSkillAction;
   const [state, formAction] = useActionState<SkillFormState | undefined, FormData>(
     action,
     undefined
   );
+
+  // Server-side error (duplicate, unauthorized, DB failure) → toast.
+  const seenStateRef = useRef<SkillFormState | undefined>(undefined);
+  useEffect(() => {
+    if (state?.error && state !== seenStateRef.current) {
+      seenStateRef.current = state;
+      toast.error({ title: "Could not save skill", description: state.error });
+    }
+  }, [state, toast]);
 
   const [category, setCategory] = useState(values.category);
   const [name, setName] = useState(values.name);
@@ -108,7 +119,10 @@ export default function SkillForm({ mode, values, existingNames, categories }: S
       sort_order: validateSortOrder(String(formData.get("sort_order") ?? "")),
     };
     setErrors(next);
-    if (Object.values(next).some(Boolean)) return;
+    if (Object.values(next).some(Boolean)) {
+      toast.warning({ title: "Check the form", description: "Please fix the highlighted fields before saving." });
+      return;
+    }
     formAction(formData);
   };
 

@@ -1,8 +1,9 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useActionState, useState } from "react";
+import { useEffect, useRef, useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { useToast } from "@/app/components/toast";
 import { loginAction } from "./actions";
 
 /* ─────────────────────────────────────────────
@@ -59,6 +60,16 @@ export default function LoginForm() {
   const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
   const [state, formAction] = useActionState(loginAction, undefined);
 
+  // Server-side error (invalid credentials) → toast.
+  const toast = useToast();
+  const seenStateRef = useRef<typeof state>(undefined);
+  useEffect(() => {
+    if (state?.error && state !== seenStateRef.current) {
+      seenStateRef.current = state;
+      toast.error({ title: "Sign in failed", description: state.error });
+    }
+  }, [state, toast]);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [touched, setTouched] = useState<{ email?: boolean; password?: boolean }>({});
@@ -83,7 +94,13 @@ export default function LoginForm() {
     const e2 = validatePassword(password);
     setErrors({ email: e1, password: e2 });
     setTouched({ email: true, password: true });
-    if (e1 || e2) return;
+    if (e1 || e2) {
+      toast.warning({
+        title: "Check your details",
+        description: "Please correct the highlighted fields and try again.",
+      });
+      return;
+    }
 
     formAction(formData);
   };

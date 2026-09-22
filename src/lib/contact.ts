@@ -1,7 +1,6 @@
 import "server-only";
 import type { Filter, Sort, WithId } from "mongodb";
-import { getDb, getNativeDb, nextId } from "@/lib/db";
-import { ContactMessage as ContactMessageEntity, ContactReply as ContactReplyEntity } from "@/lib/entities";
+import { getNativeDb, getRepo, nextId } from "@/lib/db";
 
 export type MessageStatus = "new" | "read" | "replied";
 
@@ -178,8 +177,7 @@ export async function saveContactMessage(input: {
   /** Message-ID of the notification email that announced this message. */
   emailMessageId?: string | null;
 }): Promise<number> {
-  const ds = await getDb();
-  const repo = ds.getMongoRepository(ContactMessageEntity);
+  const repo = await getRepo("contact_messages");
   const id = await nextId("contact_messages");
   const now = new Date();
   await repo.insertOne({
@@ -201,8 +199,7 @@ export async function toggleMessageRead(
   id: number,
   read: boolean
 ): Promise<boolean> {
-  const ds = await getDb();
-  const repo = ds.getMongoRepository(ContactMessageEntity);
+  const repo = await getRepo("contact_messages");
   const result = await repo.updateMany(
     { id, status: { $ne: "replied" } },
     { $set: { status: read ? "read" : "new", updated_at: new Date() } }
@@ -258,8 +255,7 @@ export async function addMessageReply(
     .findOne({ id }, { projection: { _id: 1 } });
   if (!parent) return false;
 
-  const ds = await getDb();
-  const replyRepo = ds.getMongoRepository(ContactReplyEntity);
+  const replyRepo = await getRepo("contact_replies");
   const replyId = await nextId("contact_replies");
   await replyRepo.insertOne({
     id: replyId,
@@ -287,8 +283,7 @@ export async function setMessageEmailMessageId(
   id: number,
   emailMessageId: string
 ): Promise<void> {
-  const ds = await getDb();
-  const repo = ds.getMongoRepository(ContactMessageEntity);
+  const repo = await getRepo("contact_messages");
   await repo.updateMany(
     { id },
     { $set: { email_message_id: emailMessageId, updated_at: new Date() } }
@@ -332,8 +327,7 @@ export async function deleteContactMessage(id: number): Promise<boolean> {
   // Cascade: remove the thread's replies with the message (was ON DELETE CASCADE).
   await db.collection("contact_replies").deleteMany({ message_id: id });
 
-  const ds = await getDb();
-  const repo = ds.getMongoRepository(ContactMessageEntity);
+  const repo = await getRepo("contact_messages");
   const result = await repo.deleteMany({ id });
   return (result.deletedCount ?? 0) > 0;
 }

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { setActionToast } from "@/lib/action-toast";
 import {
   createProject,
   updateProject,
@@ -118,6 +119,11 @@ export async function createProjectAction(
   revalidatePath("/dashboard/projects");
   revalidatePath("/projects");
   revalidatePath("/"); // homepage section
+  await setActionToast({
+    variant: "success",
+    title: "Project created",
+    description: `"${input.title}" is now live on the projects page.`,
+  });
   redirect("/dashboard/projects");
 }
 
@@ -149,6 +155,11 @@ export async function updateProjectAction(
   revalidatePath("/dashboard/projects");
   revalidatePath("/projects");
   revalidatePath("/");
+  await setActionToast({
+    variant: "success",
+    title: "Project updated",
+    description: `"${input.title}" was saved.`,
+  });
   redirect("/dashboard/projects");
 }
 
@@ -158,6 +169,11 @@ export async function deleteProjectAction(formData: FormData): Promise<void> {
   const id = Number(formData.get("id"));
   if (Number.isInteger(id) && id > 0) {
     await deleteProject(id);
+    await setActionToast({
+      variant: "success",
+      title: "Project deleted",
+      description: "The project was removed from the projects page.",
+    });
     revalidatePath("/dashboard/projects");
     revalidatePath("/projects");
     revalidatePath("/");

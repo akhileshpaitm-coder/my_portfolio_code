@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { setActionToast } from "@/lib/action-toast";
 import {
   createAboutParagraph,
   updateAboutParagraph,
@@ -86,6 +87,11 @@ export async function createParagraphAction(
     sort_order,
   });
   revalidateAbout();
+  await setActionToast({
+    variant: "success",
+    title: "Paragraph added",
+    description: "The about paragraph is now live.",
+  });
   redirect("/dashboard/about");
 }
 
@@ -114,6 +120,11 @@ export async function updateParagraphAction(
   if (!ok) return { error: "Paragraph not found." };
 
   revalidateAbout();
+  await setActionToast({
+    variant: "success",
+    title: "Paragraph updated",
+    description: "Your changes are now live.",
+  });
   redirect("/dashboard/about");
 }
 
@@ -122,6 +133,11 @@ export async function deleteParagraphAction(formData: FormData): Promise<void> {
   const id = Number(formData.get("id"));
   if (Number.isInteger(id) && id > 0) {
     await deleteAboutParagraph(id);
+    await setActionToast({
+      variant: "success",
+      title: "Paragraph deleted",
+      description: "The about paragraph was removed.",
+    });
     revalidateAbout();
   }
 }
@@ -191,6 +207,11 @@ export async function createValueAction(
     sort_order,
   });
   revalidateAbout();
+  await setActionToast({
+    variant: "success",
+    title: "Core value added",
+    description: `"${input.title}" is now live.`,
+  });
   redirect("/dashboard/about");
 }
 
@@ -220,6 +241,11 @@ export async function updateValueAction(
   if (!ok) return { error: "Core value not found." };
 
   revalidateAbout();
+  await setActionToast({
+    variant: "success",
+    title: "Core value updated",
+    description: `"${input.title}" was saved.`,
+  });
   redirect("/dashboard/about");
 }
 
@@ -228,6 +254,11 @@ export async function deleteValueAction(formData: FormData): Promise<void> {
   const id = Number(formData.get("id"));
   if (Number.isInteger(id) && id > 0) {
     await deleteCoreValue(id);
+    await setActionToast({
+      variant: "success",
+      title: "Core value deleted",
+      description: "The core value was removed.",
+    });
     revalidateAbout();
   }
 }

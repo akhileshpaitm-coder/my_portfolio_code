@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { setActionToast } from "@/lib/action-toast";
 import {
   createExpertise,
   updateExpertise,
@@ -82,6 +83,11 @@ export async function createExpertiseAction(
 
   await createExpertise({ title: input.title, sort_order });
   revalidateExpertise();
+  await setActionToast({
+    variant: "success",
+    title: "Expertise added",
+    description: `"${input.title}" was added to the expertise section.`,
+  });
   redirect("/dashboard/expertise");
 }
 
@@ -116,6 +122,11 @@ export async function updateExpertiseAction(
   if (!ok) return { error: "Expertise item not found." };
 
   revalidateExpertise();
+  await setActionToast({
+    variant: "success",
+    title: "Expertise updated",
+    description: `"${input.title}" was saved.`,
+  });
   redirect("/dashboard/expertise");
 }
 
@@ -125,6 +136,11 @@ export async function deleteExpertiseAction(formData: FormData): Promise<void> {
   const id = Number(formData.get("id"));
   if (Number.isInteger(id) && id > 0) {
     await deleteExpertise(id);
+    await setActionToast({
+      variant: "success",
+      title: "Expertise deleted",
+      description: "The expertise item was removed.",
+    });
     revalidateExpertise();
   }
 }

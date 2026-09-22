@@ -1,7 +1,6 @@
 import "server-only";
 import type { Filter, Document } from "mongodb";
-import { getDb, getNativeDb, nextId } from "@/lib/db";
-import { Expertise } from "@/lib/entities";
+import { getNativeDb, getRepo, nextId } from "@/lib/db";
 
 export interface ExpertiseItem {
   id: number;
@@ -50,8 +49,7 @@ export async function createExpertise(input: {
   title: string;
   sort_order: number;
 }): Promise<number> {
-  const ds = await getDb();
-  const repo = ds.getMongoRepository(Expertise);
+  const repo = await getRepo("expertise");
   const id = await nextId("expertise");
   const now = new Date();
   await repo.insertOne({
@@ -68,8 +66,7 @@ export async function updateExpertise(
   id: number,
   input: { title: string; sort_order: number }
 ): Promise<boolean> {
-  const ds = await getDb();
-  const repo = ds.getMongoRepository(Expertise);
+  const repo = await getRepo("expertise");
   const result = await repo.updateMany(
     { id },
     { $set: { title: input.title, sort_order: input.sort_order, updated_at: new Date() } }
@@ -78,8 +75,7 @@ export async function updateExpertise(
 }
 
 export async function deleteExpertise(id: number): Promise<boolean> {
-  const ds = await getDb();
-  const repo = ds.getMongoRepository(Expertise);
+  const repo = await getRepo("expertise");
   const result = await repo.deleteMany({ id });
   return (result.deletedCount ?? 0) > 0;
 }

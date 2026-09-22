@@ -1,6 +1,5 @@
 import "server-only";
-import { getDb } from "@/lib/db";
-import { SiteSetting } from "@/lib/entities";
+import { getRepo } from "@/lib/db";
 import {
   SETTING_DEFAULTS,
   SETTING_KEYS,
@@ -13,8 +12,7 @@ export type { SettingKey, SiteSettings } from "./settings-schema";
 
 /** All settings in the DB (unrecognized keys ignored). */
 async function getRawSettings(): Promise<Partial<Record<SettingKey, string>>> {
-  const ds = await getDb();
-  const repo = ds.getMongoRepository(SiteSetting);
+  const repo = await getRepo("site_settings");
   const rows = await repo.find({});
   const out: Partial<Record<SettingKey, string>> = {};
   for (const row of rows) {
@@ -45,8 +43,7 @@ export async function updateSettings(
   );
   if (entries.length === 0) return;
 
-  const ds = await getDb();
-  const repo = ds.getMongoRepository(SiteSetting);
+  const repo = await getRepo("site_settings");
   await Promise.all(
     entries.map(([k, v]) =>
       repo.updateMany(

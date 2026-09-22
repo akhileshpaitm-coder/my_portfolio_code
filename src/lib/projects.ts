@@ -1,7 +1,6 @@
 import "server-only";
 import type { Filter, Document } from "mongodb";
-import { getDb, getNativeDb, nextId } from "@/lib/db";
-import { Project as ProjectEntity } from "@/lib/entities";
+import { getNativeDb, getRepo, nextId } from "@/lib/db";
 
 export interface Project {
   id: number;
@@ -117,8 +116,7 @@ export interface ProjectInput {
 }
 
 export async function createProject(input: ProjectInput): Promise<number> {
-  const ds = await getDb();
-  const repo = ds.getMongoRepository(ProjectEntity);
+  const repo = await getRepo("projects");
   const id = await nextId("projects");
   const now = new Date();
   await repo.insertOne({
@@ -141,8 +139,7 @@ export async function createProject(input: ProjectInput): Promise<number> {
 }
 
 export async function updateProject(id: number, input: ProjectInput): Promise<boolean> {
-  const ds = await getDb();
-  const repo = ds.getMongoRepository(ProjectEntity);
+  const repo = await getRepo("projects");
   const result = await repo.updateMany(
     { id },
     {
@@ -166,8 +163,7 @@ export async function updateProject(id: number, input: ProjectInput): Promise<bo
 }
 
 export async function deleteProject(id: number): Promise<boolean> {
-  const ds = await getDb();
-  const repo = ds.getMongoRepository(ProjectEntity);
+  const repo = await getRepo("projects");
   const result = await repo.deleteMany({ id });
   return (result.deletedCount ?? 0) > 0;
 }

@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useEffect, useRef, useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import { useToast } from "@/app/components/toast";
 import { replyToMessageAction, type ReplyFormState } from "../actions";
 
 const inputBase =
@@ -33,10 +34,20 @@ export default function ReplyForm({
   defaultSubject: string;
   disabled?: boolean;
 }) {
+  const toast = useToast();
   const [state, formAction] = useActionState<ReplyFormState | undefined, FormData>(
     replyToMessageAction,
     undefined
   );
+
+  // Send errors (SMTP failure, validation) → toast. Success redirects.
+  const seenStateRef = useRef<ReplyFormState | undefined>(undefined);
+  useEffect(() => {
+    if (state?.error && state !== seenStateRef.current) {
+      seenStateRef.current = state;
+      toast.error({ title: "Reply not sent", description: state.error });
+    }
+  }, [state, toast]);
 
   return (
     <form action={formAction} className="space-y-4" noValidate>

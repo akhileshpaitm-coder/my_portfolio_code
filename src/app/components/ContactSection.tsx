@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { useToast } from "./toast";
 
 // ── Types ────────────────────────────────────
 interface FormData {
@@ -10,7 +11,7 @@ interface FormData {
   message: string;
 }
 
-type Status = "idle" | "sending" | "success" | "error";
+type Status = "idle" | "sending";
 
 /** Render ==text== segments in cyan (same markup as the About section). */
 function ResponseNote({ text }: { text: string }) {
@@ -59,7 +60,7 @@ export default function ContactSection({
 
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [status, setStatus] = useState<Status>("idle");
-  const [serverMsg, setServerMsg] = useState("");
+  const toast = useToast();
 
   // ── Validation ──────────────────────────────
   function validate(): boolean {
@@ -80,7 +81,6 @@ export default function ContactSection({
     if (!validate()) return;
 
     setStatus("sending");
-    setServerMsg("");
 
     // 15-second timeout for the request
     const controller = new AbortController();
@@ -98,16 +98,25 @@ export default function ContactSection({
       const data = await res.json();
 
       if (data.success) {
-        setStatus("success");
-        setServerMsg(data.message);
+        setStatus("idle");
         setForm({ name: "", email: "", subject: "", message: "" });
+        toast.success({
+          title: "Message sent",
+          description: data.message || "Thanks for reaching out — I'll get back to you soon.",
+        });
       } else {
-        setStatus("error");
-        setServerMsg(data.errors?.join(" ") || "Something went wrong.");
+        setStatus("idle");
+        toast.error({
+          title: "Could not send message",
+          description: data.errors?.join(" ") || "Something went wrong. Please try again.",
+        });
       }
     } catch {
-      setStatus("error");
-      setServerMsg("Unable to reach the server. Please try again later.");
+      setStatus("idle");
+      toast.error({
+        title: "Network error",
+        description: "Unable to reach the server. Please try again later.",
+      });
     }
   }
 
@@ -191,22 +200,6 @@ export default function ContactSection({
               className="glass rounded-2xl p-6 md:p-8"
               noValidate
             >
-              {/* Success message */}
-              {status === "success" && (
-                <div className="mb-6 flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-300">
-                  <span className="text-lg">✓</span>
-                  <span>{serverMsg}</span>
-                </div>
-              )}
-
-              {/* Error message */}
-              {status === "error" && (
-                <div className="mb-6 flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-5 py-4 text-sm text-red-300">
-                  <span className="text-lg">✕</span>
-                  <span>{serverMsg}</span>
-                </div>
-              )}
-
               <div className="grid gap-5 sm:grid-cols-2">
                 {/* Name */}
                 <div>

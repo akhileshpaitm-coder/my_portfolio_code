@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { countUnreadMessages } from "@/lib/contact";
+import { readActionToast } from "@/lib/action-toast";
+import ActionToastListener from "@/app/components/ActionToastListener";
 import DashboardShell from "./DashboardShell";
 
 export const metadata = {
@@ -34,6 +36,9 @@ export default async function DashboardLayout({
     }
   }
 
+  // One-shot flash toast left by a redirecting server action (create/update/delete).
+  const actionToast = await readActionToast();
+
   return (
     <DashboardShell
       user={{
@@ -43,6 +48,7 @@ export default async function DashboardLayout({
       }}
       unreadCount={unreadCount}
     >
+      <ActionToastListener actionToast={actionToast} />
       {children}
     </DashboardShell>
   );

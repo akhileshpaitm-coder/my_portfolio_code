@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useToast } from "./toast";
 
 /* ── Types ──────────────────────────────────── */
 interface Slot {
@@ -10,7 +11,6 @@ interface Slot {
 }
 
 type Status = "idle" | "loading" | "submitting" | "success" | "error";
-
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -22,6 +22,7 @@ function toISODate(d: Date): string {
 }
 
 export default function BookingSection() {
+  const toast = useToast();
   const today = useMemo(() => new Date(), []);
 
   /* Calendar month state */
@@ -43,11 +44,18 @@ export default function BookingSection() {
   /* Load the bookable date range once */
   useEffect(() => {
     fetch("/api/booking/slots")
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error())) )
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
       .then((data: { dates?: string[] }) =>
         setBookable(new Set(data.dates ?? []))
       )
-      .catch(() => setBookable(new Set()));
+      .catch(() => {
+        setBookable(new Set());
+        toast.error({
+          title: "Calendar unavailable",
+          description: "Could not load available days. Please refresh the page.",
+        });
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* Load slots when a date is selected. State resets happen in the click
@@ -65,7 +73,10 @@ export default function BookingSection() {
         if (!cancelled) setSlots(data.slots);
       })
       .catch((err: Error) => {
-        if (!cancelled) setSlotsError(err.message);
+        if (!cancelled) {
+          setSlotsError(err.message);
+          toast.error({ title: "Could not load slots", description: err.message });
+        }
       })
       .finally(() => {
         if (!cancelled) setSlotsLoading(false);
@@ -132,9 +143,15 @@ export default function BookingSection() {
       setServerMsg(
         `Meeting booked for ${data.label}. Check your email for the invite.`
       );
+      toast.success({
+        title: "Meeting booked 🎉",
+        description: `Booked for ${data.label}. Check your email for the invite.`,
+      });
     } catch (err) {
+      const message = err instanceof Error ? err.message : "Booking failed.";
       setStatus("error");
-      setServerMsg(err instanceof Error ? err.message : "Booking failed.");
+      setServerMsg(message);
+      toast.error({ title: "Booking failed", description: message });
       // Refresh slots — the picked one may be gone.
       if (selectedDate) {
         fetch(`/api/booking/slots?date=${selectedDate}`)

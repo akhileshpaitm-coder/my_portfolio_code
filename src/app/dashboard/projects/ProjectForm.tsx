@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useEffect, useRef, useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { useToast } from "@/app/components/toast";
 import {
   createProjectAction,
   updateProjectAction,
@@ -158,11 +159,21 @@ function SubmitButton({ isEdit }: { isEdit: boolean }) {
 }
 
 export default function ProjectForm({ mode, values, existingTitles = [] }: ProjectFormProps) {
+  const toast = useToast();
   const action = mode === "create" ? createProjectAction : updateProjectAction;
   const [state, formAction] = useActionState<ProjectFormState | undefined, FormData>(
     action,
     undefined
   );
+
+  // Server-side error (duplicate title, unauthorized, DB failure) → toast.
+  const seenStateRef = useRef<ProjectFormState | undefined>(undefined);
+  useEffect(() => {
+    if (state?.error && state !== seenStateRef.current) {
+      seenStateRef.current = state;
+      toast.error({ title: "Could not save project", description: state.error });
+    }
+  }, [state, toast]);
 
   const [icon, setIcon] = useState(values.icon);
   const [color, setColor] = useState(values.color);
@@ -229,8 +240,14 @@ export default function ProjectForm({ mode, values, existingTitles = [] }: Proje
       } else {
         setVideoPath(data.url);
       }
+      toast.success({
+        title: kind === "screenshot" ? "Screenshot uploaded" : "Video uploaded",
+        description: file.name,
+      });
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : "Upload failed. Please try again.");
+      const message = err instanceof Error ? err.message : "Upload failed. Please try again.";
+      setUploadError(message);
+      toast.error({ title: "Upload failed", description: message });
     } finally {
       setUploading(null);
     }
@@ -270,6 +287,10 @@ export default function ProjectForm({ mode, values, existingTitles = [] }: Proje
     if (hasError) {
       // Show which fields are empty/invalid and jump to the first problem field
       setShowSummary(true);
+      toast.warning({
+        title: "Please fix the highlighted fields",
+        description: "Some required fields are missing or invalid.",
+      });
       const firstBad = FIELD_ORDER.find((f) =>
         f === "features" ? featErr : f === "tech" ? techErr : next[f]
       );

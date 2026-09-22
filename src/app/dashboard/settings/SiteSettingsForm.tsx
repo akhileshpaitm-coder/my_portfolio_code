@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useEffect, useRef, useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import { useToast } from "@/app/components/toast";
 import {
   updateSiteSettingsAction,
   type SiteSettingsFormState,
@@ -37,10 +38,27 @@ const GROUPS: Array<{ id: "Hero" | "Contact" | "Footer" | "Booking"; title: stri
 const MARKUP_FIELDS = new Set(["contact_response_note"]);
 
 export default function SiteSettingsForm({ settings }: { settings: SiteSettings }) {
+  const toast = useToast();
   const [state, formAction] = useActionState<SiteSettingsFormState | undefined, FormData>(
     updateSiteSettingsAction,
     undefined
   );
+
+  // Success/error toasts whenever the action returns a new result.
+  const seenStateRef = useRef<SiteSettingsFormState | undefined>(undefined);
+  useEffect(() => {
+    if (state && state !== seenStateRef.current) {
+      seenStateRef.current = state;
+      if (state.success) {
+        toast.success({
+          title: "Settings saved",
+          description: "Your changes are live on the site.",
+        });
+      } else if (state.error) {
+        toast.error({ title: "Could not save settings", description: state.error });
+      }
+    }
+  }, [state, toast]);
 
   const inputCls =
     "w-full rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-2.5 text-sm text-zinc-100 transition-colors placeholder:text-zinc-600 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20";

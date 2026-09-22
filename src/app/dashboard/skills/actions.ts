@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { setActionToast } from "@/lib/action-toast";
 import {
   createSkill,
   updateSkill,
@@ -83,6 +84,11 @@ export async function createSkillAction(
   revalidatePath("/skills");
   revalidatePath("/tech-stack");
   revalidatePath("/"); // homepage section
+  await setActionToast({
+    variant: "success",
+    title: "Skill added",
+    description: `"${input.name}" was added to ${input.category}.`,
+  });
   redirect("/dashboard/skills");
 }
 
@@ -117,6 +123,11 @@ export async function updateSkillAction(
   revalidatePath("/skills");
   revalidatePath("/tech-stack");
   revalidatePath("/");
+  await setActionToast({
+    variant: "success",
+    title: "Skill updated",
+    description: `"${input.name}" was saved.`,
+  });
   redirect("/dashboard/skills");
 }
 
@@ -126,6 +137,11 @@ export async function deleteSkillAction(formData: FormData): Promise<void> {
   const id = Number(formData.get("id"));
   if (Number.isInteger(id) && id > 0) {
     await deleteSkill(id);
+    await setActionToast({
+      variant: "success",
+      title: "Skill deleted",
+      description: "The skill was removed from the skills section.",
+    });
     revalidatePath("/dashboard/skills");
     revalidatePath("/skills");
     revalidatePath("/tech-stack");

@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useEffect, useRef, useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { useToast } from "@/app/components/toast";
 import {
   createExpertiseAction,
   updateExpertiseAction,
@@ -68,11 +69,21 @@ export default function ExpertiseForm({
   values,
   existingTitles,
 }: ExpertiseFormProps) {
+  const toast = useToast();
   const action = mode === "create" ? createExpertiseAction : updateExpertiseAction;
   const [state, formAction] = useActionState<ExpertiseFormState | undefined, FormData>(
     action,
     undefined
   );
+
+  // Server-side error (duplicate, unauthorized, DB failure) → toast.
+  const seenStateRef = useRef<ExpertiseFormState | undefined>(undefined);
+  useEffect(() => {
+    if (state?.error && state !== seenStateRef.current) {
+      seenStateRef.current = state;
+      toast.error({ title: "Could not save expertise", description: state.error });
+    }
+  }, [state, toast]);
 
   const [title, setTitle] = useState(values.title);
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -93,7 +104,10 @@ export default function ExpertiseForm({
       sort_order: validateSortOrder(String(formData.get("sort_order") ?? "")),
     };
     setErrors(next);
-    if (Object.values(next).some(Boolean)) return;
+    if (Object.values(next).some(Boolean)) {
+      toast.warning({ title: "Check the form", description: "Please fix the highlighted fields before saving." });
+      return;
+    }
     formAction(formData);
   };
 

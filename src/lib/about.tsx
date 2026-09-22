@@ -1,10 +1,6 @@
 import "server-only";
 import type { ReactNode } from "react";
-import { getDb, getNativeDb, nextId } from "@/lib/db";
-import {
-  AboutParagraph as AboutParagraphEntity,
-  CoreValue as CoreValueEntity,
-} from "@/lib/entities";
+import { getNativeDb, getRepo, nextId } from "@/lib/db";
 
 export interface AboutParagraph {
   id: number;
@@ -59,8 +55,7 @@ export async function createAboutParagraph(input: {
   emphasized: boolean;
   sort_order: number;
 }): Promise<number> {
-  const ds = await getDb();
-  const repo = ds.getMongoRepository(AboutParagraphEntity);
+  const repo = await getRepo("about_paragraphs");
   const id = await nextId("about_paragraphs");
   const now = new Date();
   await repo.insertOne({
@@ -78,8 +73,7 @@ export async function updateAboutParagraph(
   id: number,
   input: { body: string; emphasized: boolean; sort_order: number }
 ): Promise<boolean> {
-  const ds = await getDb();
-  const repo = ds.getMongoRepository(AboutParagraphEntity);
+  const repo = await getRepo("about_paragraphs");
   const result = await repo.updateMany(
     { id },
     {
@@ -95,8 +89,7 @@ export async function updateAboutParagraph(
 }
 
 export async function deleteAboutParagraph(id: number): Promise<boolean> {
-  const ds = await getDb();
-  const repo = ds.getMongoRepository(AboutParagraphEntity);
+  const repo = await getRepo("about_paragraphs");
   const result = await repo.deleteMany({ id });
   return (result.deletedCount ?? 0) > 0;
 }
@@ -165,8 +158,7 @@ export async function createCoreValue(input: {
   description: string;
   sort_order: number;
 }): Promise<number> {
-  const ds = await getDb();
-  const repo = ds.getMongoRepository(CoreValueEntity);
+  const repo = await getRepo("core_values");
   const id = await nextId("core_values");
   const now = new Date();
   await repo.insertOne({
@@ -185,8 +177,7 @@ export async function updateCoreValue(
   id: number,
   input: { icon: string; title: string; description: string; sort_order: number }
 ): Promise<boolean> {
-  const ds = await getDb();
-  const repo = ds.getMongoRepository(CoreValueEntity);
+  const repo = await getRepo("core_values");
   const result = await repo.updateMany(
     { id },
     {
@@ -203,8 +194,7 @@ export async function updateCoreValue(
 }
 
 export async function deleteCoreValue(id: number): Promise<boolean> {
-  const ds = await getDb();
-  const repo = ds.getMongoRepository(CoreValueEntity);
+  const repo = await getRepo("core_values");
   const result = await repo.deleteMany({ id });
   return (result.deletedCount ?? 0) > 0;
 }

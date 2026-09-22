@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useEffect, useRef, useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { useToast } from "@/app/components/toast";
 import {
   createParagraphAction,
   updateParagraphAction,
@@ -28,6 +29,16 @@ function SubmitButton({ children }: { children: React.ReactNode }) {
 }
 
 function StateAlert({ state }: { state: AboutFormState | undefined }) {
+  const toast = useToast();
+  const seenRef = useRef<AboutFormState | undefined>(undefined);
+
+  useEffect(() => {
+    if (state?.error && state !== seenRef.current) {
+      seenRef.current = state;
+      toast.error({ title: "Could not save", description: state.error });
+    }
+  }, [state, toast]);
+
   if (!state?.error) return null;
   return (
     <div

@@ -1,7 +1,6 @@
 import "server-only";
 import type { Document, Filter } from "mongodb";
-import { getDb, getNativeDb, nextId } from "@/lib/db";
-import { Skill as SkillEntity } from "@/lib/entities";
+import { getNativeDb, getRepo, nextId } from "@/lib/db";
 
 export interface Skill {
   id: number;
@@ -81,8 +80,7 @@ export interface SkillInput {
 }
 
 export async function createSkill(input: SkillInput): Promise<number> {
-  const ds = await getDb();
-  const repo = ds.getMongoRepository(SkillEntity);
+  const repo = await getRepo("skills");
   const id = await nextId("skills");
   const now = new Date();
   await repo.insertOne({
@@ -97,8 +95,7 @@ export async function createSkill(input: SkillInput): Promise<number> {
 }
 
 export async function updateSkill(id: number, input: SkillInput): Promise<boolean> {
-  const ds = await getDb();
-  const repo = ds.getMongoRepository(SkillEntity);
+  const repo = await getRepo("skills");
   const result = await repo.updateMany(
     { id },
     {
@@ -114,8 +111,7 @@ export async function updateSkill(id: number, input: SkillInput): Promise<boolea
 }
 
 export async function deleteSkill(id: number): Promise<boolean> {
-  const ds = await getDb();
-  const repo = ds.getMongoRepository(SkillEntity);
+  const repo = await getRepo("skills");
   const result = await repo.deleteMany({ id });
   return (result.deletedCount ?? 0) > 0;
 }
