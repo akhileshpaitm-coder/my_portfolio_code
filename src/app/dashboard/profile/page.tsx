@@ -43,7 +43,6 @@ export default async function ProfilePage() {
 
         <div className="space-y-4 border-t border-zinc-800/60 pt-6">
           {[
-            { label: "User ID", value: user?.id ?? "—" },
             { label: "Display name", value: user?.name ?? "—" },
             { label: "Email", value: user?.email ?? "—" },
             { label: "Role", value: user?.role ?? "—" },
