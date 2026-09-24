@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { subscribeMessageCounts } from "@/lib/message-live";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import NewMessageToast, { type NewMessageInfo } from "./NewMessageToast";
@@ -29,11 +30,13 @@ export default function DashboardShell({
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   /*
-   * Live unread badge — admins poll /api/messages/unread-count every 10s
-   * so the sidebar count updates without a page navigation. Polling pauses
-   * in hidden tabs and refreshes immediately on focus (tab switch or
-   * returning to the window). When the count goes up, a toast is shown and
-   * a desktop notification sent (if the user granted permission).
+   * Live unread badge — subscribes to the shared /api/messages/counts
+   * poller (src/lib/message-live.ts) so the sidebar count updates without a
+   * page navigation, with a single network request per tick shared with the
+   * inbox tabs. Polling pauses in hidden tabs and refreshes immediately on
+   * focus (tab switch or returning to the window). When the count goes up,
+   * a toast is shown and a desktop notification sent (if the user granted
+   * permission).
    */
   const isUnreadAdmin = user.role === "admin";
   const [liveUnread, setLiveUnread] = useState(unreadCount);
@@ -44,7 +47,8 @@ export default function DashboardShell({
   // Server revalidations (mark read/reply/delete) hand us a fresh prop —
   // adopt it over the polled value (React's adjust-state-during-render
   // pattern). unreadRef keeps the last POLLED value and is only written in
-  // fetchUnread, so "went up" detection stays anchored to real arrivals.
+  // the poll subscription, so "went up" detection stays anchored to real
+  // arrivals.
   const [prevPropUnread, setPrevPropUnread] = useState(unreadCount);
   if (unreadCount !== prevPropUnread) {
     setPrevPropUnread(unreadCount);
@@ -53,8 +57,6 @@ export default function DashboardShell({
 
   useEffect(() => {
     if (!isUnreadAdmin) return;
-
-    let timer: ReturnType<typeof setInterval> | undefined;
 
     const notify = (latest: NewMessageInfo) => {
       setToastMessage(latest);
@@ -73,69 +75,18 @@ export default function DashboardShell({
       }
     };
 
-    const fetchUnread = async () => {
-      try {
-        const res = await fetch("/api/messages/unread-count", {
-          cache: "no-store",
-        });
-        if (!res.ok) return;
-        const data: unknown = await res.json();
-        if (
-          typeof data !== "object" ||
-          data === null ||
-          typeof (data as { unread?: unknown }).unread !== "number"
-        ) {
-          return;
-        }
-        const { unread, latest } = data as {
-          unread: number;
-          latest: NewMessageInfo | null;
-        };
-        const prev = unreadRef.current;
-        unreadRef.current = unread;
-        setLiveUnread(unread);
-        // Count went up → someone submitted the contact form. `latest` is
-        // the newest unread row; only toast if we don't already show it.
-        if (
-          unread > prev &&
-          latest &&
-          toastRef.current !== latest.id
-        ) {
-          toastRef.current = latest.id;
-          notify(latest);
-        }
-      } catch {
-        // Network hiccup — keep the last known count until the next tick.
+    return subscribeMessageCounts((data) => {
+      const { unread, latest } = data;
+      const prev = unreadRef.current;
+      unreadRef.current = unread;
+      setLiveUnread(unread);
+      // Count went up → someone submitted the contact form. `latest` is
+      // the newest unread row; only toast if we don't already show it.
+      if (unread > prev && latest && toastRef.current !== latest.id) {
+        toastRef.current = latest.id;
+        notify(latest);
       }
-    };
-
-    const start = () => {
-      if (timer) return;
-      timer = setInterval(fetchUnread, 10_000);
-    };
-    const stop = () => {
-      if (timer) {
-        clearInterval(timer);
-        timer = undefined;
-      }
-    };
-
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") {
-        fetchUnread(); // catch up immediately when the user returns
-        start();
-      } else {
-        stop();
-      }
-    };
-
-    document.addEventListener("visibilitychange", onVisibility);
-    start();
-
-    return () => {
-      stop();
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
+    });
   }, [isUnreadAdmin]);
 
   const dismissToast = useCallback(() => setToastMessage(null), []);

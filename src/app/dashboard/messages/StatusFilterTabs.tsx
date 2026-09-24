@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { subscribeMessageCounts } from "@/lib/message-live";
 
 export type StatusFilter = "all" | "new" | "read" | "replied";
 
@@ -30,8 +31,9 @@ function sameCounts(a: TabCounts, b: TabCounts) {
 
 /**
  * Inbox status filter tabs with live counts.
- * Polls /api/messages/counts every 10s so the badges update without a
- * navigation (paused in hidden tabs, caught up on focus). When a count
+ * Subscribes to the shared /api/messages/counts poller
+ * (src/lib/message-live.ts) so the badges update without a navigation (one
+ * network request per tick, shared with the sidebar badge). When a count
  * changes, router.refresh() re-renders the server message list so the
  * rows stay in sync with the tabs.
  */
@@ -66,72 +68,24 @@ export default function StatusFilterTabs({
   }, [initialCounts]);
 
   useEffect(() => {
-    let timer: ReturnType<typeof setInterval> | undefined;
-
-    const fetchCounts = async () => {
-      try {
-        const res = await fetch("/api/messages/counts", { cache: "no-store" });
-        if (!res.ok) return;
-        const data: unknown = await res.json();
-        if (typeof data !== "object" || data === null) return;
-        const c = data as {
-          counts?: Partial<Record<"new" | "read" | "replied", unknown>>;
-          allTotal?: unknown;
-        };
-        if (
-          typeof c.counts?.new === "number" &&
-          typeof c.counts?.read === "number" &&
-          typeof c.counts?.replied === "number" &&
-          typeof c.allTotal === "number"
-        ) {
-          const next: TabCounts = {
-            counts: {
-              all: c.allTotal,
-              new: c.counts.new,
-              read: c.counts.read,
-              replied: c.counts.replied,
-            },
-            allTotal: c.allTotal,
-          };
-          if (!sameCounts(countsRef.current, next)) {
-            countsRef.current = next;
-            setTabCounts(next);
-            // A count changed out-of-band — the server-rendered list below
-            // (and the sidebar badge via the layout) is now stale.
-            router.refresh();
-          }
-        }
-      } catch {
-        // Network hiccup — keep last known counts until the next tick.
+    return subscribeMessageCounts((data) => {
+      const next: TabCounts = {
+        counts: {
+          all: data.allTotal,
+          new: data.counts.new,
+          read: data.counts.read,
+          replied: data.counts.replied,
+        },
+        allTotal: data.allTotal,
+      };
+      if (!sameCounts(countsRef.current, next)) {
+        countsRef.current = next;
+        setTabCounts(next);
+        // A count changed out-of-band — the server-rendered list below
+        // (and the sidebar badge via the layout) is now stale.
+        router.refresh();
       }
-    };
-
-    const start = () => {
-      if (timer) return;
-      timer = setInterval(fetchCounts, 10_000);
-    };
-    const stop = () => {
-      if (timer) {
-        clearInterval(timer);
-        timer = undefined;
-      }
-    };
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") {
-        fetchCounts(); // catch up immediately when the user returns
-        start();
-      } else {
-        stop();
-      }
-    };
-
-    document.addEventListener("visibilitychange", onVisibility);
-    start();
-
-    return () => {
-      stop();
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
+    });
   }, [router]);
 
   /** Inbox link preserving the filter; page 1 for tab switches. */
