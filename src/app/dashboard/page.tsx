@@ -1,4 +1,6 @@
 import { auth } from "@/lib/auth";
+import { getVisitStats, type VisitStats } from "@/lib/visits";
+import VisitorStatsPanel from "./VisitorStatsPanel";
 
 const stats = [
   { value: "6+", label: "Years Experience", icon: "🚀", gradient: "#06b6d4" },
@@ -13,6 +15,24 @@ const stats = [
 export default async function DashboardPage() {
   const session = await auth();
   const firstName = (session?.user?.name ?? "there").split(" ")[0];
+
+  // Visitor traffic — zeros if the collections are missing (migration
+  // pending); the panel still renders so the dashboard never breaks.
+  let visitStats: VisitStats = {
+    total: 0,
+    today: 0,
+    todayUnique: 0,
+    yesterday: 0,
+    yesterdayUnique: 0,
+    last7: [],
+    last30: [],
+    topPages: [],
+  };
+  try {
+    visitStats = await getVisitStats();
+  } catch {
+    // keep defaults
+  }
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -35,6 +55,9 @@ export default async function DashboardPage() {
           the sidebar or the profile menu.
         </p>
       </div>
+
+      {/* Visitor traffic (live) */}
+      <VisitorStatsPanel initialStats={visitStats} />
 
       {/* Stats */}
       <div className="mb-10 grid gap-5 sm:grid-cols-3 stagger">

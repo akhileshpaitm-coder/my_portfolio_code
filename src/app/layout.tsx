@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ScrollToTop from "./components/ScrollToTop";
+import VisitTracker from "./components/VisitTracker";
 import { ToastProvider } from "./components/toast";
 
 const geistSans = Geist({
@@ -53,6 +54,7 @@ export default function RootLayout({
         <ToastProvider>
           {children}
           <ScrollToTop />
+          <VisitTracker />
         </ToastProvider>
       </body>
     </html>
