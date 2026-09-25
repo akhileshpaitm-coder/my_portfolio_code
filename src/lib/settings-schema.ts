@@ -22,15 +22,6 @@ export const SETTING_DEFAULTS = {
   footer_linkedin_url: "https://www.linkedin.com/in/akhilesh-prajapati-9a8682193",
   footer_blurb:
     "Building scalable, secure, and high-performance web & mobile applications for 6+ years — from enterprise platforms and e-commerce to cloud solutions and real-time systems.",
-
-  /* ── Meeting booking (Google Calendar) ──
-   * booking_calendar_id empty ⇒ booking section hidden on the homepage.
-   * Times are in booking_timezone. */
-  booking_window_start: "08:00",
-  booking_window_end: "10:00",
-  booking_slot_minutes: "20",
-  booking_timezone: "Asia/Kolkata",
-  booking_calendar_id: "",
 } as const;
 
 export type SettingKey = keyof typeof SETTING_DEFAULTS;
@@ -42,7 +33,7 @@ export const SETTING_KEYS = Object.keys(SETTING_DEFAULTS) as SettingKey[];
 export const SETTING_FIELDS: Array<{
   key: SettingKey;
   label: string;
-  group: "Hero" | "Contact" | "Footer" | "Booking";
+  group: "Hero" | "Contact" | "Footer";
   multiline?: boolean;
   type?: "text" | "url" | "email";
 }> = [
@@ -61,14 +52,4 @@ export const SETTING_FIELDS: Array<{
   { key: "footer_github_url", label: "GitHub URL", group: "Footer", type: "url" },
   { key: "footer_linkedin_url", label: "LinkedIn URL", group: "Footer", type: "url" },
   { key: "footer_blurb", label: "Footer blurb", group: "Footer", multiline: true },
-  { key: "booking_window_start", label: "Booking window start (HH:MM)", group: "Booking" },
-  { key: "booking_window_end", label: "Booking window end (HH:MM)", group: "Booking" },
-  { key: "booking_slot_minutes", label: "Slot length (minutes)", group: "Booking" },
-  { key: "booking_timezone", label: "Timezone (IANA, e.g. Asia/Kolkata)", group: "Booking" },
-  {
-    key: "booking_calendar_id",
-    label: "Google Calendar ID",
-    group: "Booking",
-    type: "text",
-  },
 ];

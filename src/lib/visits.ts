@@ -28,6 +28,13 @@ const VISITOR_TTL_SECONDS = 60 * 60 * 48; // keep ≤48h, index expiry does the 
 export interface VisitStats {
   /** All-time tracked page views. */
   total: number;
+  /**
+   * All-time unique visitors — a visitor hash counted once per day, so the
+   * same person on two different days counts twice (the hash is daily-salted
+   * by design; no cookies/persistent ids are stored). Starts counting from
+   * when this counter was introduced.
+   */
+  totalVisitors: number;
   /** Page views for the current local calendar day. */
   today: number;
   /** Unique visitors for the current local calendar day. */
@@ -117,23 +124,28 @@ export async function recordVisit(input: {
     });
   await bulk.execute();
 
-  await db.collection("visit_stats").updateOne(
-    { key: STATS_KEY },
-    {
-      $inc: { total: 1 },
-      $set: { last_day: day, updated_at: new Date() },
-    },
-    { upsert: true }
-  );
-
   // Unique-visitor dedupe — upsert with $setOnInsert. Duplicates are no-ops
   // (the visitor was already counted today); daily unique counts are derived
-  // lazily by aggregating this collection in getVisitStats().
-  await db.collection("visit_visitors").updateOne(
+  // lazily by aggregating this collection in getVisitStats(). An upsertedId
+  // in the result means this visitor hash is new for the day.
+  const visitorRes = await db.collection("visit_visitors").updateOne(
     { day, vid },
     {
       $setOnInsert: { day, vid, expires_at: dayEnd },
       $set: { updated_at: new Date() },
+    },
+    { upsert: true }
+  );
+  const isNewVisitorToday = visitorRes.upsertedId != null;
+
+  await db.collection("visit_stats").updateOne(
+    { key: STATS_KEY },
+    {
+      $inc: {
+        total: 1,
+        ...(isNewVisitorToday ? { total_visitors: 1 } : {}),
+      },
+      $set: { last_day: day, updated_at: new Date() },
     },
     { upsert: true }
   );
@@ -155,7 +167,10 @@ export async function getVisitStats(): Promise<VisitStats> {
 
   const statsDoc = await db
     .collection("visit_stats")
-    .findOne({ key: STATS_KEY }, { projection: { _id: 0, total: 1 } });
+    .findOne(
+      { key: STATS_KEY },
+      { projection: { _id: 0, total: 1, total_visitors: 1 } }
+    );
 
   const today = dayKey();
   const yesterdayKey = dayKey(
@@ -209,6 +224,7 @@ export async function getVisitStats(): Promise<VisitStats> {
 
   return {
     total: Number(statsDoc?.total) || 0,
+    totalVisitors: Number(statsDoc?.total_visitors) || 0,
     today: viewsByDay.get(today) ?? 0,
     todayUnique: uniqueByDay.get(today) ?? 0,
     yesterday: viewsByDay.get(yesterdayKey) ?? 0,

@@ -7,6 +7,8 @@ export interface Skill {
   category: string;
   name: string;
   sort_order: number;
+  /** Optional icon key (see lib/tech-icons.ts). Empty/missing = auto icon. */
+  icon?: string;
 }
 
 type SkillStored = Document & Skill;
@@ -18,7 +20,7 @@ export async function getSkills(): Promise<Skill[]> {
     .collection<SkillStored>("skills")
     .find(
       {},
-      { projection: { _id: 0, id: 1, category: 1, name: 1, sort_order: 1 } }
+      { projection: { _id: 0, id: 1, category: 1, name: 1, sort_order: 1, icon: 1 } }
     )
     .sort({ sort_order: 1, name: 1, id: 1 })
     .toArray();
@@ -27,6 +29,7 @@ export async function getSkills(): Promise<Skill[]> {
     category: r.category,
     name: r.name,
     sort_order: r.sort_order,
+    icon: typeof r.icon === "string" && r.icon ? r.icon : undefined,
   }));
 }
 
@@ -66,10 +69,16 @@ export async function getSkillById(id: number): Promise<Skill | null> {
     .collection<SkillStored>("skills")
     .findOne(
       { id },
-      { projection: { _id: 0, id: 1, category: 1, name: 1, sort_order: 1 } }
+      { projection: { _id: 0, id: 1, category: 1, name: 1, sort_order: 1, icon: 1 } }
     );
   return row
-    ? { id: row.id, category: row.category, name: row.name, sort_order: row.sort_order }
+    ? {
+        id: row.id,
+        category: row.category,
+        name: row.name,
+        sort_order: row.sort_order,
+        icon: typeof row.icon === "string" && row.icon ? row.icon : undefined,
+      }
     : null;
 }
 
@@ -77,6 +86,8 @@ export interface SkillInput {
   category: string;
   name: string;
   sort_order: number;
+  /** Optional icon key (validated against lib/tech-icons.ts by callers). */
+  icon?: string;
 }
 
 export async function createSkill(input: SkillInput): Promise<number> {
@@ -88,6 +99,7 @@ export async function createSkill(input: SkillInput): Promise<number> {
     category: input.category,
     name: input.name,
     sort_order: input.sort_order,
+    ...(input.icon ? { icon: input.icon } : {}),
     created_at: now,
     updated_at: now,
   });
@@ -105,6 +117,7 @@ export async function updateSkill(id: number, input: SkillInput): Promise<boolea
         sort_order: input.sort_order,
         updated_at: new Date(),
       },
+      $unset: input.icon ? {} : { icon: "" }, // clearing the picker removes the field
     }
   );
   return (result.modifiedCount ?? 0) > 0;

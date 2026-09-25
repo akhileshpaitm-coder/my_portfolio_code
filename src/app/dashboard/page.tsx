@@ -20,6 +20,7 @@ export default async function DashboardPage() {
   // pending); the panel still renders so the dashboard never breaks.
   let visitStats: VisitStats = {
     total: 0,
+    totalVisitors: 0,
     today: 0,
     todayUnique: 0,
     yesterday: 0,
@@ -56,9 +57,6 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {/* Visitor traffic (live) */}
-      <VisitorStatsPanel initialStats={visitStats} />
-
       {/* Stats */}
       <div className="mb-10 grid gap-5 sm:grid-cols-3 stagger">
         {stats.map((stat) => (
@@ -77,6 +75,8 @@ export default async function DashboardPage() {
           </div>
         ))}
       </div>
+      {/* Visitor traffic (live) */}
+      <VisitorStatsPanel initialStats={visitStats} />
     </div>
   );
 }

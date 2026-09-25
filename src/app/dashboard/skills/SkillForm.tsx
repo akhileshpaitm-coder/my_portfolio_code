@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useActionState, useState } from "react";
+import { useEffect, useMemo, useRef, useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useToast } from "@/app/components/toast";
+import { listTechIcons, luminance, iconForTech, type TechIcon } from "@/lib/tech-icons";
 import {
   createSkillAction,
   updateSkillAction,
@@ -14,6 +15,7 @@ export interface SkillFormValues {
   category: string;
   name: string;
   sort_order: number;
+  icon?: string;
 }
 
 export interface SkillFormProps {
@@ -79,6 +81,55 @@ function SubmitButton({ isEdit }: { isEdit: boolean }) {
   );
 }
 
+/** One selectable icon tile in the picker grid. */
+function IconTile({
+  active,
+  onClick,
+  label,
+  title,
+  icon: Icon,
+  color,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  title: string;
+  icon?: TechIcon["icon"];
+  color?: string;
+}) {
+  const dark = color ? luminance(color) < 0.35 : false;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-pressed={active}
+      className={`flex flex-col items-center gap-1.5 rounded-xl border px-1 py-2.5 transition-all ${
+        active
+          ? "border-cyan-500/60 bg-cyan-500/10"
+          : "border-transparent hover:border-zinc-700 hover:bg-zinc-800/50"
+      }`}
+    >
+      {Icon && color ? (
+        <span
+          className={`flex h-8 w-8 items-center justify-center ${
+            dark ? "rounded-full bg-white" : ""
+          }`}
+        >
+          <Icon className="h-6 w-6" style={{ color }} />
+        </span>
+      ) : (
+        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-dashed border-zinc-600 text-[10px] font-semibold text-zinc-400">
+          A
+        </span>
+      )}
+      <span className="w-full truncate text-center text-[10px] text-zinc-400">
+        {label}
+      </span>
+    </button>
+  );
+}
+
 export default function SkillForm({ mode, values, existingNames, categories }: SkillFormProps) {
   const toast = useToast();
   const action = mode === "create" ? createSkillAction : updateSkillAction;
@@ -98,7 +149,19 @@ export default function SkillForm({ mode, values, existingNames, categories }: S
 
   const [category, setCategory] = useState(values.category);
   const [name, setName] = useState(values.name);
+  const [icon, setIcon] = useState(values.icon ?? "");
   const [errors, setErrors] = useState<FieldErrors>({});
+
+  const allIcons = useMemo(() => listTechIcons(), []);
+
+  // Auto-suggest: as the admin types a name, jump to a matching icon.
+  const suggested = useMemo(
+    () =>
+      allIcons.find(
+        (i) => i.name.toLowerCase() === name.trim().toLowerCase()
+      ),
+    [allIcons, name]
+  );
 
   const cls = (field: keyof FieldErrors) =>
     `${inputBase} ${errors[field] ? inputErr : inputOk}`;
@@ -125,6 +188,12 @@ export default function SkillForm({ mode, values, existingNames, categories }: S
     }
     formAction(formData);
   };
+
+  const [iconSearch, setIconSearch] = useState("");
+  const filteredIcons = useMemo(() => {
+    const q = iconSearch.trim().toLowerCase();
+    return q ? allIcons.filter((i) => i.name.toLowerCase().includes(q)) : allIcons;
+  }, [allIcons, iconSearch]);
 
   return (
     <form action={handleSubmit} className="space-y-5" noValidate>
@@ -182,9 +251,7 @@ export default function SkillForm({ mode, values, existingNames, categories }: S
             {errors.category}
           </p>
         )}
-      </div>
-
-      {/* Skill name */}
+      </div>      {/* Skill name */}
       <div>
         <label
           htmlFor="name"
@@ -213,6 +280,76 @@ export default function SkillForm({ mode, values, existingNames, categories }: S
             {errors.name}
           </p>
         )}
+      </div>
+
+      {/* Icon picker (optional) */}
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <label
+            htmlFor="icon-search"
+            className="block text-xs font-semibold uppercase tracking-wider text-zinc-500"
+          >
+            Icon <span className="normal-case text-zinc-600">(optional)</span>
+          </label>
+          {icon && (
+            <button
+              type="button"
+              onClick={() => setIcon("")}
+              className="text-[11px] text-zinc-500 transition-colors hover:text-red-400"
+            >
+              Clear (use auto icon)
+            </button>
+          )}
+        </div>
+        <input
+          type="hidden"
+          name="icon"
+          value={icon}
+        />
+        <input
+          id="icon-search"
+          type="search"
+          value={iconSearch}
+          placeholder="Search icons…"
+          autoComplete="off"
+          onChange={(e) => setIconSearch(e.target.value)}
+          className={inputBase + " " + inputOk}
+        />
+        {!icon && suggested && (
+          <button
+            type="button"
+            onClick={() => setIcon(suggested.name)}
+            className="mt-2 flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-300 transition-colors hover:bg-cyan-500/20"
+          >
+            Use suggested: <suggested.icon className="h-4 w-4" style={{ color: suggested.color }} />
+            {suggested.name}
+          </button>
+        )}
+        <div className="mt-3 grid max-h-52 grid-cols-6 gap-2 overflow-y-auto rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-3 sm:grid-cols-8">
+          {/* Auto icon option */}
+          <IconTile
+            active={icon === ""}
+            onClick={() => setIcon("")}
+            label="Auto"
+            title="Auto — pick icon from the skill name"
+          />
+          {filteredIcons.map((it) => (
+            <IconTile
+              key={it.name}
+              active={icon === it.name}
+              onClick={() => setIcon(it.name)}
+              label={it.name}
+              title={`${it.name} — brand color`}
+              icon={it.icon}
+              color={it.color}
+            />
+          ))}
+        </div>
+        <p className="mt-2 text-[11px] text-zinc-600">
+          Leave on "Auto" to use the matching brand icon for the skill name
+          (falls back to a generic code icon). Or pick a specific icon to
+          override it.
+        </p>
       </div>
 
       {/* Sort order */}
@@ -250,14 +387,31 @@ export default function SkillForm({ mode, values, existingNames, categories }: S
       </div>
 
       {/* Live preview chip */}
-      {name.trim() && (
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] uppercase tracking-wider text-zinc-600">
-            Preview:
-          </span>
-          <span className="tag-chip">{name.trim()}</span>
-        </div>
-      )}
+      {name.trim() && (() => {
+        // Mirror the public section's resolution: explicit icon wins, else
+        // auto-match by name, else the generic fallback.
+        const resolved: TechIcon = icon
+          ? (allIcons.find((i) => i.name === icon) ?? iconForTech(name))
+          : iconForTech(name);
+        const dark = luminance(resolved.color) < 0.35;
+        return (
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] uppercase tracking-wider text-zinc-600">
+              Preview:
+            </span>
+            <span className="tag-chip gap-2">
+              <span
+                className={`flex h-5 w-5 items-center justify-center ${
+                  dark ? "rounded-full bg-white" : ""
+                }`}
+              >
+                <resolved.icon className="h-4 w-4" style={{ color: resolved.color }} />
+              </span>
+              {name.trim()}
+            </span>
+          </div>
+        );
+      })()}
 
       <SubmitButton isEdit={mode === "edit"} />
     </form>

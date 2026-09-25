@@ -22,16 +22,10 @@ function SaveButton() {
   );
 }
 
-const GROUPS: Array<{ id: "Hero" | "Contact" | "Footer" | "Booking"; title: string; hint: string }> = [
+const GROUPS: Array<{ id: "Hero" | "Contact" | "Footer"; title: string; hint: string }> = [
   { id: "Hero", title: "Hero section", hint: "The top landing area of the homepage" },
   { id: "Contact", title: "Contact info", hint: "Info cards beside the contact form" },
   { id: "Footer", title: "Footer", hint: "Social links and brand blurb at page bottom" },
-  {
-    id: "Booking",
-    title: "Meeting booking",
-    hint:
-      "Visitor scheduler backed by your Google Calendar. Leave the Calendar ID empty to hide the booking section. Requires GOOGLE_CLIENT_EMAIL / GOOGLE_PRIVATE_KEY env vars and the calendar shared with the service account.",
-  },
 ];
 
 /** Fields where ==cyan== inline markup is supported. */

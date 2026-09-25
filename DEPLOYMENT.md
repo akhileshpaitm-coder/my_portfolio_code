@@ -34,7 +34,7 @@ One migration per collection, in this order:
 | `003_projects.mjs` | `projects` + seed |
 | `004_expertise.mjs` | `expertise` + seed |
 | `005_about.mjs` | `about_paragraphs`, `core_values` + seed |
-| `006_site_settings.mjs` | `site_settings` + seed (incl. `booking_*` keys) |
+| `006_site_settings.mjs` | `site_settings` + seed |
 | `007_contact.mjs` | `contact_messages`, `contact_replies` |
 
 Numeric ids are allocated by the `counters` collection (see `nextId()` in
@@ -61,10 +61,8 @@ Ensure the production environment defines:
 - `AUTH_SECRET`, `AUTH_URL`
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM_EMAIL`
 - `CONTACT_EMAIL` (recipient for contact-form notifications)
-- `GOOGLE_CLIENT_EMAIL`, `GOOGLE_PRIVATE_KEY` — service account for the meeting
-  booking section (optional; the section hides itself when unset or when
-  `booking_calendar_id` in Site Settings is empty). The target calendar must be
-  shared with the service account email with **Make changes to events** permission.
+- `NEXT_PUBLIC_CALENDLY_URL` — Calendly event URL for the "Book a Meeting"
+  popup (client-safe; defaults to `https://calendly.com/akhileshpaitm/30min`)
 
 > **Atlas networking:** the deploying host's IP must be in the cluster's
 > Network Access list (or use `0.0.0.0/0` for hosts with dynamic IPs), and the
@@ -87,7 +85,6 @@ npm run start        # or pm2 restart <app>
 - [ ] `/dashboard/settings` shows the **Site Settings** form; change the Hero badge, save, confirm it appears on the homepage, then change it back
 - [ ] Submit a test message via `/contact` → appears in `/dashboard/messages`; reply to it → arrives threaded in the same email conversation
 - [ ] Confirm the contact reply email lands in the expected inbox
-- [ ] If booking is configured: the "Let's Talk" section shows on the homepage; pick a slot and submit — the meeting appears on the Google Calendar and the visitor receives the invite
 
 ## Rollback
 

@@ -62,6 +62,7 @@ export default async function EditSkillPage({
             category: skill.category,
             name: skill.name,
             sort_order: skill.sort_order,
+            icon: skill.icon,
           }}
         />
       </div>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { getSkills } from "@/lib/skills";
+import { iconForTech, luminance } from "@/lib/tech-icons";
 import DeleteSkillButton from "./DeleteSkillButton";
 
 export const metadata = {
@@ -105,6 +106,19 @@ export default async function ManageSkillsPage() {
                     className="flex items-center justify-between gap-3 py-2.5"
                   >
                     <div className="flex min-w-0 items-center gap-3">
+                      {(() => {
+                        const { icon: Icon, color } = iconForTech(s.icon ?? s.name);
+                        const dark = luminance(color) < 0.35;
+                        return (
+                          <span
+                            className={`flex h-6 w-6 shrink-0 items-center justify-center ${
+                              dark ? "rounded-full bg-white" : ""
+                            }`}
+                          >
+                            <Icon className="h-4.5 w-4.5" style={{ color }} />
+                          </span>
+                        );
+                      })()}
                       <span className="tag-chip max-w-full truncate">
                         {s.name}
                       </span>

@@ -1,7 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import MobileMenu from "./MobileMenu";
+import CalendlyButton from "./CalendlyButton";
 import { getSiteSettings } from "@/lib/settings";
+import { auth } from "@/lib/auth";
 
 const NAV_LINKS = [
   { href: "/about", label: "About" },
@@ -12,7 +14,13 @@ const NAV_LINKS = [
   { href: "/contact", label: "Contact" },
 ];
 
-export function SiteNavbar({ active }: { active?: string }) {
+export async function SiteNavbar({ active }: { active?: string }) {
+  const session = await auth();
+  const prefill =
+    session?.user?.name || session?.user?.email
+      ? { name: session.user.name ?? undefined, email: session.user.email ?? undefined }
+      : undefined;
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50">
       <div className="glass mx-auto mt-4 w-[90%] max-w-5xl rounded-2xl px-6 py-3">
@@ -42,9 +50,13 @@ export function SiteNavbar({ active }: { active?: string }) {
             ))}
           </div>
           <div className="flex items-center gap-3">
+            <CalendlyButton
+              prefill={prefill}
+              className="hidden rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 px-5 py-2 text-sm font-medium text-white transition-all hover:scale-105 hover:shadow-lg hover:shadow-cyan-500/25 sm:block"
+            />
             <Link
               href="/contact"
-              className="hidden rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 px-5 py-2 text-sm font-medium text-white transition-all hover:scale-105 hover:shadow-lg hover:shadow-cyan-500/25 sm:block"
+              className="hidden rounded-full border border-zinc-700 px-5 py-2 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-500 hover:text-zinc-100 sm:block"
             >
               Contact Me
             </Link>

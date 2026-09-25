@@ -11,6 +11,7 @@ import {
   nextSkillSortOrder,
   getSkillNames,
 } from "@/lib/skills";
+import { TECH_ICONS } from "@/lib/tech-icons";
 
 export interface SkillFormState {
   error?: string;
@@ -42,7 +43,14 @@ function parseInput(formData: FormData) {
   const category = String(formData.get("category") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const sortOrder = Number(formData.get("sort_order") ?? 0);
-  return { category, name, sort_order: sortOrder };
+  // Icon keys are validated against the registry below (empty = auto icon).
+  const icon = String(formData.get("icon") ?? "").trim();
+  return {
+    category,
+    name,
+    sort_order: sortOrder,
+    icon: icon && TECH_ICONS[icon] ? icon : undefined,
+  };
 }
 
 function validate(input: ReturnType<typeof parseInput>): string | undefined {

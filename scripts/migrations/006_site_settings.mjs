@@ -4,9 +4,6 @@
  * Mirrors the old MySQL `site_settings` table (`key` was the PK; here it is
  * a unique indexed field). lib/settings.ts defines defaults for any missing
  * key, so the site renders correctly even with an empty collection.
- *
- * Seeds the current hardcoded values including the booking_* keys
- * (defaults produce one 2-hour window 08:00–10:00, 20-minute slots).
  */
 export async function up(db) {
   await db.createCollection("site_settings").catch((e) => {
@@ -33,12 +30,6 @@ export async function up(db) {
     ["footer_github_url", "https://github.com/akhileshpaitm-coder"],
     ["footer_linkedin_url", "https://www.linkedin.com/in/akhilesh-prajapati-9a8682193"],
     ["footer_blurb", "Building scalable, secure, and high-performance web & mobile applications for 6+ years — from enterprise platforms and e-commerce to cloud solutions and real-time systems."],
-    // Booking settings (dashboard-managed via Site Settings).
-    ["booking_window_start", "08:00"],
-    ["booking_window_end", "10:00"],
-    ["booking_slot_minutes", "20"],
-    ["booking_timezone", "Asia/Kolkata"],
-    ["booking_calendar_id", ""],
   ];
 
   for (const [key, value] of seeds) {

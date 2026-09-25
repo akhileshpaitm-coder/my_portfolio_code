@@ -31,7 +31,7 @@ export default function VisitorStatsPanel({
         const res = await fetch("/api/visits", { cache: "no-store" });
         if (!res.ok) return;
         const data = (await res.json()) as VisitStats;
-        if (typeof data?.total === "number" && data !== statsRef.current) {
+        if (typeof data?.total === "number" && typeof data?.totalVisitors === "number" && data !== statsRef.current) {
           statsRef.current = data;
           setStats(data);
         }
@@ -94,10 +94,14 @@ export default function VisitorStatsPanel({
       </div>
 
       {/* Counters */}
-      <div className="relative mb-8 grid gap-4 sm:grid-cols-3">
+      <div className="relative mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4">
           <div className="text-3xl font-bold gradient-text">{fmt(stats.total)}</div>
           <div className="mt-1 text-xs text-zinc-500">Total views</div>
+        </div>
+        <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4">
+          <div className="text-3xl font-bold gradient-text">{fmt(stats.totalVisitors)}</div>
+          <div className="mt-1 text-xs text-zinc-500">Total visitors</div>
         </div>
         <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4">
           <div className="text-3xl font-bold text-zinc-100">{fmt(stats.today)}</div>

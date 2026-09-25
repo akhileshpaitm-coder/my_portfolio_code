@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import ContactSection from "./components/ContactSection";
-import BookingSection from "./components/BookingSection";
+import CalendlyButton from "./components/CalendlyButton";
 import MobileMenu from "./components/MobileMenu";
 import AboutSection from "./components/sections/About";
 import SkillsSection from "./components/sections/Skills";
@@ -9,9 +9,13 @@ import ExpertiseSection from "./components/sections/Expertise";
 import ProjectsSection from "./components/sections/Projects";
 import TechnologiesSection from "./components/sections/Technologies";
 import { getSiteSettings } from "@/lib/settings";
-import { isBookingEnabled } from "@/lib/calendar";
+import { auth } from "@/lib/auth";
 
-function Navbar() {
+function Navbar({
+  prefill,
+}: {
+  prefill?: { name?: string; email?: string };
+}) {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50">
       <div className="glass mx-auto mt-4 w-[90%] max-w-5xl rounded-2xl px-6 py-3">
@@ -38,9 +42,13 @@ function Navbar() {
             <Link href="/contact" className="nav-link">Contact</Link>
           </div>
           <div className="flex items-center gap-3">
+            <CalendlyButton
+              prefill={prefill}
+              className="hidden rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 px-5 py-2 text-sm font-medium text-white transition-all hover:scale-105 hover:shadow-lg hover:shadow-cyan-500/25 sm:block"
+            />
             <a
               href="mailto:akhileshpaitm@gmail.com"
-              className="hidden rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 px-5 py-2 text-sm font-medium text-white transition-all hover:scale-105 hover:shadow-lg hover:shadow-cyan-500/25 sm:block"
+              className="hidden rounded-full border border-zinc-700 px-5 py-2 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-500 hover:text-zinc-100 sm:block"
             >
               Contact Me
             </a>
@@ -66,8 +74,10 @@ function Navbar() {
 // ─────────────────────────────────────────────
 function HeroSection({
   settings,
+  prefill,
 }: {
   settings: Awaited<ReturnType<typeof getSiteSettings>>;
+  prefill?: { name?: string; email?: string };
 }) {
   const stats = [
     { value: settings.hero_stat1_value, label: settings.hero_stat1_label },
@@ -110,20 +120,20 @@ function HeroSection({
 
         {/* CTAs */}
         <div className="flex flex-col items-center justify-center gap-4 sm:flex-row animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+          <CalendlyButton
+            prefill={prefill}
+            className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 px-8 py-3.5 text-sm font-semibold text-white transition-all hover:scale-105 hover:shadow-xl hover:shadow-cyan-500/25"
+          >
+            Book a Meeting
+            <svg className="h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </CalendlyButton>
           <a
             href="#projects"
-            className="group relative inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 px-8 py-3.5 text-sm font-semibold text-white transition-all hover:scale-105 hover:shadow-xl hover:shadow-cyan-500/25"
-          >
-            Explore My Work
-            <svg className="h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-            </svg>
-          </a>
-          <a
-            href="#technologies"
             className="inline-flex items-center gap-2 rounded-full border border-zinc-700 px-8 py-3.5 text-sm font-medium text-zinc-300 transition-all hover:border-zinc-500 hover:text-zinc-100 hover:bg-zinc-800/50"
           >
-            View Tech Stack
+            Explore My Work
           </a>
         </div>
 
@@ -261,20 +271,24 @@ function Footer({
 // =============================================
 // PAGE
 // =============================================
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
-  const settings = await getSiteSettings();
-  const bookingEnabled = isBookingEnabled(settings);
+  const [settings, session] = await Promise.all([getSiteSettings(), auth()]);
+  const prefill =
+    session?.user?.name || session?.user?.email
+      ? { name: session.user.name ?? undefined, email: session.user.email ?? undefined }
+      : undefined;
 
   return (
     <main className="bg-background">
-      <Navbar />
-      <HeroSection settings={settings} />
+      <Navbar prefill={prefill} />
+      <HeroSection settings={settings} prefill={prefill} />
       <AboutSection />
       <SkillsSection />
       <ExpertiseSection />
       <ProjectsSection />
       <TechnologiesSection />
-      {bookingEnabled && <BookingSection />}
       <ContactSection
         email={settings.contact_email}
         location={settings.contact_location}

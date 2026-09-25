@@ -43,7 +43,10 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   const session = await auth();
   if (session?.user?.role !== "admin") {
-    return NextResponse.json({ total: 0, today: 0, todayUnique: 0 }, { status: 200 });
+    return NextResponse.json(
+      { total: 0, totalVisitors: 0, today: 0, todayUnique: 0 },
+      { status: 200 }
+    );
   }
 
   try {
@@ -54,7 +57,7 @@ export async function GET() {
   } catch (err) {
     console.error("Visit stats fetch failed:", err);
     return NextResponse.json(
-      { total: 0, today: 0, todayUnique: 0, error: "unavailable" },
+      { total: 0, totalVisitors: 0, today: 0, todayUnique: 0, error: "unavailable" },
       { status: 200 }
     );
   }

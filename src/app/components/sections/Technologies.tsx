@@ -1,4 +1,5 @@
-import { getSkills, groupSkillsByCategory, type SkillGroup } from "@/lib/skills";
+import { getSkills, groupSkillsByCategory, type Skill, type SkillGroup } from "@/lib/skills";
+import { iconForTech, luminance } from "@/lib/tech-icons";
 
 /**
  * Fallback data (the original hardcoded tech stack) — used when the DB has
@@ -44,10 +45,16 @@ function fallbackGroups(): SkillGroup[] {
 
 export default async function TechnologiesSection() {
   let groups: SkillGroup[];
+  let iconBySkill = new Map<string, string | undefined>();
 
   try {
-    const skills = await getSkills();
-    groups = skills.length > 0 ? groupSkillsByCategory(skills) : fallbackGroups();
+    const skills: Skill[] = await getSkills();
+    if (skills.length > 0) {
+      groups = groupSkillsByCategory(skills);
+      iconBySkill = new Map(skills.map((s) => [s.name, s.icon]));
+    } else {
+      groups = fallbackGroups();
+    }
   } catch {
     groups = fallbackGroups();
   }
@@ -69,10 +76,10 @@ export default async function TechnologiesSection() {
           The modern tools and frameworks I leverage to build production-ready applications.
         </p>
 
-        <div className="space-y-8 stagger">
+        <div className="space-y-10 stagger">
           {groups.map((group, idx) => (
             <div key={group.category}>
-              <div className="mb-4 flex items-center gap-3">
+              <div className="mb-5 flex items-center gap-3">
                 <div
                   className="h-3 w-3 rounded-full"
                   style={{ backgroundColor: dotColorFor(group.category, idx) }}
@@ -81,12 +88,36 @@ export default async function TechnologiesSection() {
                   {group.category}
                 </h3>
               </div>
-              <div className="flex flex-wrap gap-2.5">
-                {group.names.map((tech) => (
-                  <span key={tech} className="tag-chip text-sm">
-                    {tech}
-                  </span>
-                ))}
+
+              {/* Icon grid — brand logo above, label below (reference layout).
+                  An icon explicitly chosen in the dashboard wins; otherwise the
+                  registry auto-matches the skill name. */}
+              <div className="grid grid-cols-4 gap-x-4 gap-y-8 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
+                {group.names.map((tech) => {
+                  const savedIcon = iconBySkill.get(tech);
+                  const { icon: Icon, color } = iconForTech(savedIcon ?? tech);
+                  // Dark brand marks (Next.js, Kafka, Prisma…) get a light
+                  // circular badge so they stay visible on the dark theme —
+                  // same treatment as the Next.js tile in the reference.
+                  const needsBadge = luminance(color) < 0.35;
+                  return (
+                    <div
+                      key={tech}
+                      className="group flex flex-col items-center gap-3 rounded-2xl px-2 py-3 transition-all duration-300 hover:-translate-y-1 hover:bg-zinc-800/40"
+                    >
+                      <span
+                        className={`flex h-12 w-12 items-center justify-center transition-transform duration-300 group-hover:scale-110 ${
+                          needsBadge ? "rounded-full bg-white" : ""
+                        }`}
+                      >
+                        <Icon className="h-9 w-9" style={{ color }} />
+                      </span>
+                      <span className="text-center text-xs leading-tight text-zinc-400 transition-colors group-hover:text-zinc-200">
+                        {tech}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}
