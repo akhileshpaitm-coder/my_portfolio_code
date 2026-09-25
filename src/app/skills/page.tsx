@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { SiteNavbar, SiteFooter } from "@/app/components/PageChrome";
-import SkillsSection from "@/app/components/sections/Skills";
+import TechnologiesSection from "@/app/components/sections/Technologies";
 
 export const metadata: Metadata = {
   title: "Skills | Akhilesh Prajapati",
@@ -13,7 +13,7 @@ export default function SkillsPage() {
     <main className="bg-background">
       <SiteNavbar active="/skills" />
       <div className="pt-28">
-        <SkillsSection />
+        <TechnologiesSection />
       </div>
       <SiteFooter />
     </main>

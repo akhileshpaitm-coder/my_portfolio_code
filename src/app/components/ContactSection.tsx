@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { FiMail, FiMapPin, FiBriefcase } from "react-icons/fi";
 import { useToast } from "./toast";
 
 // ── Types ────────────────────────────────────
@@ -170,12 +171,14 @@ export default function ContactSection({
               </h3>
               <div className="space-y-4">
                 {[
-                  { icon: "📧", label: "Email", value: email },
-                  { icon: "📍", label: "Location", value: location },
-                  { icon: "💼", label: "Availability", value: availability },
+                  { icon: FiMail, label: "Email", value: email },
+                  { icon: FiMapPin, label: "Location", value: location },
+                  { icon: FiBriefcase, label: "Availability", value: availability },
                 ].map((item) => (
                   <div key={item.label} className="flex items-start gap-3">
-                    <span className="mt-0.5 text-lg">{item.icon}</span>
+                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-cyan-500/20 bg-cyan-500/10 text-cyan-300">
+                      <item.icon className="h-4 w-4" />
+                    </span>
                     <div>
                       <div className="text-xs text-zinc-500">{item.label}</div>
                       <div className="text-sm text-zinc-200">{item.value}</div>

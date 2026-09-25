@@ -1,5 +1,6 @@
 import { getAboutParagraphs, getCoreValues, renderInlineMarkup } from "@/lib/about";
 import type { AboutParagraph, CoreValue } from "@/lib/about";
+import { resolveValueIcon } from "@/lib/value-icons";
 
 /**
  * Fallback data (the original hardcoded content) — used when the tables are
@@ -85,15 +86,24 @@ export default async function AboutSection() {
             <div className="glass rounded-2xl p-6 md:p-8">
               <h3 className="mb-6 text-lg font-semibold text-zinc-100">Core Values</h3>
               <div className="space-y-5">
-                {renderedValues.map((item) => (
-                  <div key={item.title} className="flex min-w-0 items-start gap-3">
-                    <span className="mt-0.5 text-xl">{item.icon}</span>
-                    <div className="min-w-0 break-words">
-                      <div className="text-sm font-medium text-zinc-200">{item.title}</div>
-                      <div className="text-xs text-zinc-500">{item.description}</div>
+                {renderedValues.map((item) => {
+                  const resolved = resolveValueIcon(item.icon);
+                  return (
+                    <div key={item.title} className="flex min-w-0 items-start gap-3">
+                      {resolved.kind === "icon" ? (
+                        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-cyan-500/20 bg-cyan-500/10 text-cyan-300">
+                          <resolved.Icon className="h-4 w-4" />
+                        </span>
+                      ) : (
+                        <span className="mt-0.5 text-xl">{resolved.emoji}</span>
+                      )}
+                      <div className="min-w-0 break-words">
+                        <div className="text-sm font-medium text-zinc-200">{item.title}</div>
+                        <div className="text-xs text-zinc-500">{item.description}</div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

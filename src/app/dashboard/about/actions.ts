@@ -14,6 +14,10 @@ import {
   deleteCoreValue,
   nextCoreValueSortOrder,
 } from "@/lib/about";
+import {
+  isValidValueIconKey,
+  normalizeValueIcon,
+} from "@/lib/value-icons";
 
 export interface AboutFormState {
   error?: string;
@@ -165,8 +169,9 @@ function isValidEmoji(s: string): boolean {
 
 function validateValue(input: ReturnType<typeof parseValue>): string | undefined {
   if (!input.icon) return "Icon is required.";
-  if (!isValidEmoji(input.icon))
-    return "Icon must be a single emoji (e.g. 🎯, 🚀, 💡).";
+  // Accept either a picker icon key ("target") or a single legacy emoji ("🎯").
+  if (!isValidValueIconKey(input.icon) && !isValidEmoji(input.icon))
+    return "Icon must be picked from the list or be a single emoji (e.g. 🎯).";
   if (!input.title) return "Title is required.";
   if (input.title.length > 60) return "Title must be 60 characters or fewer.";
   if (!input.description) return "Description is required.";
@@ -201,7 +206,7 @@ export async function createValueAction(
       : await nextCoreValueSortOrder();
 
   await createCoreValue({
-    icon: input.icon,
+    icon: normalizeValueIcon(input.icon),
     title: input.title,
     description: input.description,
     sort_order,
@@ -233,7 +238,7 @@ export async function updateValueAction(
   if (error) return { error };
 
   const ok = await updateCoreValue(id, {
-    icon: input.icon,
+    icon: normalizeValueIcon(input.icon),
     title: input.title,
     description: input.description,
     sort_order: input.sort_order ?? 0,

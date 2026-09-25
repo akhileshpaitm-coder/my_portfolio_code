@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useActionState, useState } from "react";
+import { useEffect, useMemo, useRef, useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useToast } from "@/app/components/toast";
+import {
+  listValueIcons,
+  resolveValueIcon,
+} from "@/lib/value-icons";
 import {
   createParagraphAction,
   updateParagraphAction,
@@ -217,6 +221,17 @@ export function ValueForm({
   );
   const [icon, setIcon] = useState(values.icon);
   const [title, setTitle] = useState(values.title);
+  const [iconSearch, setIconSearch] = useState("");
+
+  const allIcons = useMemo(() => listValueIcons(), []);
+  const filteredIcons = useMemo(() => {
+    const q = iconSearch.trim().toLowerCase();
+    return q
+      ? allIcons.filter(
+          (i) => i.label.toLowerCase().includes(q) || i.key.includes(q)
+        )
+      : allIcons;
+  }, [allIcons, iconSearch]);
 
   return (
     <form action={formAction} className="space-y-5" noValidate>
@@ -226,17 +241,69 @@ export function ValueForm({
 
       <StateAlert state={state} />
 
+      <div>
+        <label
+          htmlFor="icon-search"
+          className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-500"
+        >
+          Icon
+        </label>
+        <input
+          type="hidden"
+          name="icon"
+          value={icon}
+        />
+        <input
+          id="icon-search"
+          type="search"
+          value={iconSearch}
+          placeholder="Search icons…"
+          autoComplete="off"
+          onChange={(e) => setIconSearch(e.target.value)}
+          className={`${inputBase} ${inputOk}`}
+        />
+        <div className="mt-3 grid max-h-52 grid-cols-6 gap-2 overflow-y-auto rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-3 sm:grid-cols-10">
+          {filteredIcons.map((it) => (
+            <button
+              key={it.key}
+              type="button"
+              onClick={() => setIcon(it.key)}
+              title={`${it.label} (${it.emoji})`}
+              aria-pressed={icon === it.key}
+              className={`flex flex-col items-center gap-1 rounded-xl border px-1 py-2 transition-all ${
+                icon === it.key
+                  ? "border-cyan-500/60 bg-cyan-500/10"
+                  : "border-transparent hover:border-zinc-700 hover:bg-zinc-800/50"
+              }`}
+            >
+              <it.icon className="h-5 w-5 text-zinc-300" />
+              <span className="w-full truncate text-center text-[9px] text-zinc-500">
+                {it.label}
+              </span>
+            </button>
+          ))}
+          {filteredIcons.length === 0 && (
+            <p className="col-span-full py-4 text-center text-xs text-zinc-600">
+              No icons match “{iconSearch}”.
+            </p>
+          )}
+        </div>
+        <p className="mt-2 text-[11px] text-zinc-600">
+          Existing emojis (like 🎯) are preserved and still render — or pick a
+          line icon above for a cleaner look.
+        </p>
+      </div>
+
       <div className="grid gap-5 sm:grid-cols-[110px_1fr]">
         <div>
           <label
-            htmlFor="icon"
+            htmlFor="icon-raw"
             className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-500"
           >
-            Icon
+            Or emoji
           </label>
           <input
-            id="icon"
-            name="icon"
+            id="icon-raw"
             maxLength={8}
             value={icon}
             onChange={(e) => setIcon(e.target.value)}
@@ -282,24 +349,33 @@ export function ValueForm({
       </div>
 
       {/* Live preview */}
-      {(icon.trim() || title.trim()) && (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
-          <p className="mb-2 text-[11px] uppercase tracking-wider text-zinc-600">
-            Preview
-          </p>
-          <div className="flex items-start gap-3">
-            <span className="text-xl">{icon || "✨"}</span>
-            <div>
-              <div className="text-sm font-medium text-zinc-200">
-                {title || "Title"}
-              </div>
-              <div className="text-xs text-zinc-500">
-                {values.description || "Description"}
+      {(icon.trim() || title.trim()) && (() => {
+        const resolved = resolveValueIcon(icon);
+        return (
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
+            <p className="mb-2 text-[11px] uppercase tracking-wider text-zinc-600">
+              Preview
+            </p>
+            <div className="flex items-start gap-3">
+              {resolved.kind === "icon" ? (
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-cyan-500/20 bg-cyan-500/10 text-cyan-300">
+                  <resolved.Icon className="h-4 w-4" />
+                </span>
+              ) : (
+                <span className="text-xl">{resolved.emoji}</span>
+              )}
+              <div>
+                <div className="text-sm font-medium text-zinc-200">
+                  {title || "Title"}
+                </div>
+                <div className="text-xs text-zinc-500">
+                  {values.description || "Description"}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       <div className="max-w-[180px]">
         <label

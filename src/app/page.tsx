@@ -4,7 +4,6 @@ import ContactSection from "./components/ContactSection";
 import CalendlyButton from "./components/CalendlyButton";
 import MobileMenu from "./components/MobileMenu";
 import AboutSection from "./components/sections/About";
-import SkillsSection from "./components/sections/Skills";
 import ExpertiseSection from "./components/sections/Expertise";
 import ProjectsSection from "./components/sections/Projects";
 import TechnologiesSection from "./components/sections/Technologies";
@@ -285,10 +284,9 @@ export default async function Home() {
       <Navbar prefill={prefill} />
       <HeroSection settings={settings} prefill={prefill} />
       <AboutSection />
-      <SkillsSection />
+      <TechnologiesSection />
       <ExpertiseSection />
       <ProjectsSection />
-      <TechnologiesSection />
       <ContactSection
         email={settings.contact_email}
         location={settings.contact_location}

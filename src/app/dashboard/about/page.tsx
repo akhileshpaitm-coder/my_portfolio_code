@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { getAboutParagraphs, getCoreValues } from "@/lib/about";
+import { resolveValueIcon } from "@/lib/value-icons";
 import { deleteParagraphAction, deleteValueAction } from "./actions";
 import DeleteAboutButton from "./DeleteAboutButton";
 
@@ -142,7 +143,16 @@ export default async function ManageAboutPage() {
                   <span className="shrink-0 text-[11px] text-zinc-600">
                     #{v.sort_order}
                   </span>
-                  <span className="shrink-0 text-xl">{v.icon}</span>
+                  {(() => {
+                    const resolved = resolveValueIcon(v.icon);
+                    return resolved.kind === "icon" ? (
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-cyan-500/20 bg-cyan-500/10 text-cyan-300">
+                        <resolved.Icon className="h-4 w-4" />
+                      </span>
+                    ) : (
+                      <span className="shrink-0 text-xl">{resolved.emoji}</span>
+                    );
+                  })()}
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium text-zinc-200">
                       {v.title}
