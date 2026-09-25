@@ -22,6 +22,8 @@ export const SETTING_DEFAULTS = {
   footer_linkedin_url: "https://www.linkedin.com/in/akhilesh-prajapati-9a8682193",
   footer_blurb:
     "Building scalable, secure, and high-performance web & mobile applications for 6+ years — from enterprise platforms and e-commerce to cloud solutions and real-time systems.",
+  /** Public path of the uploaded resume PDF (empty = no resume yet). */
+  resume_url: "",
 } as const;
 
 export type SettingKey = keyof typeof SETTING_DEFAULTS;

@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { getSiteSettings } from "@/lib/settings";
 import SiteSettingsForm from "./SiteSettingsForm";
+import ResumeManager from "./ResumeManager";
 
 /**
  * Settings page — session/security summary plus site settings
@@ -38,6 +39,9 @@ export default async function SettingsPage() {
       <h2 className="mb-8 text-2xl font-bold text-zinc-100 sm:text-3xl">
         <span className="gradient-text">Settings</span>
       </h2>
+
+      {/* ── Resume manager ── */}
+      <ResumeManager initialUrl={settings.resume_url} />
 
       {/* ── Site settings ── */}
       <div className="glass mb-10 rounded-2xl p-6 sm:p-8">
