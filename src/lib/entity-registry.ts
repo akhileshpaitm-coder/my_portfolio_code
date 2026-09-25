@@ -11,6 +11,12 @@ import {
   SiteSetting,
   ContactMessage,
   ContactReply,
+  BlogPost,
+  BlogCategory,
+  BlogTag,
+  PostTag,
+  Comment,
+  PostReaction,
 } from "./entities";
 import { getNativeDb } from "./db";
 
@@ -41,7 +47,13 @@ export type EntityCollectionName =
   | "core_values"
   | "site_settings"
   | "contact_messages"
-  | "contact_replies";
+  | "contact_replies"
+  | "posts"
+  | "categories"
+  | "tags"
+  | "post_tags"
+  | "comments"
+  | "post_reactions";
 
 interface EntityRegistry {
   entities: Array<new () => unknown>;
@@ -64,6 +76,12 @@ function buildRegistry(): EntityRegistry {
     site_settings: SiteSetting,
     contact_messages: ContactMessage,
     contact_replies: ContactReply,
+    posts: BlogPost,
+    categories: BlogCategory,
+    tags: BlogTag,
+    post_tags: PostTag,
+    comments: Comment,
+    post_reactions: PostReaction,
   } as Record<EntityCollectionName, new () => unknown>;
 
   // Guard against bundlers renaming the classes: assert every entity keeps
@@ -97,7 +115,7 @@ export function getEntities(): Array<new () => unknown> {
 
 /* Re-export the classes for typing convenience — but data access should use
  * getEntity() so the class object identity is always the shared one. */
-export { User, Counter, Skill, Project, Expertise, AboutParagraph, CoreValue, SiteSetting, ContactMessage, ContactReply };
+export { User, Counter, Skill, Project, Expertise, AboutParagraph, CoreValue, SiteSetting, ContactMessage, ContactReply, BlogPost, BlogCategory, BlogTag, PostTag, Comment, PostReaction };
 
 /* ─────────────────────────────────────────────
  * Shared DataSource (moved from db.ts)

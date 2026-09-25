@@ -38,6 +38,7 @@ function Navbar({
             <Link href="/expertise" className="nav-link">Expertise</Link>
             <Link href="/projects" className="nav-link">Projects</Link>
             <Link href="/tech-stack" className="nav-link">Tech Stack</Link>
+            <Link href="/blog" className="nav-link">Blog</Link>
             <Link href="/contact" className="nav-link">Contact</Link>
           </div>
           <div className="flex items-center gap-3">
@@ -45,12 +46,6 @@ function Navbar({
               prefill={prefill}
               className="hidden rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 px-5 py-2 text-sm font-medium text-white transition-all hover:scale-105 hover:shadow-lg hover:shadow-cyan-500/25 sm:block"
             />
-            <a
-              href="mailto:akhileshpaitm@gmail.com"
-              className="hidden rounded-full border border-zinc-700 px-5 py-2 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-500 hover:text-zinc-100 sm:block"
-            >
-              Contact Me
-            </a>
             <MobileMenu
               links={[
                 { href: "/about", label: "About" },
@@ -58,6 +53,7 @@ function Navbar({
                 { href: "/expertise", label: "Expertise" },
                 { href: "/projects", label: "Projects" },
                 { href: "/tech-stack", label: "Tech Stack" },
+                { href: "/blog", label: "Blog" },
                 { href: "/contact", label: "Contact" },
               ]}
             />

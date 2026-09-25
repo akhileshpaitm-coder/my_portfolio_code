@@ -127,15 +127,29 @@ export interface ToastApi {
 const ToastContext = createContext<ToastApi | null>(null);
 
 /**
+ * No-op fallback used when a component calls useToast outside the provider
+ * (or when a bundler hiccup yields two copies of this module). Failing safe
+ * keeps pages rendering — losing a toast is much better than crashing.
+ */
+const NOOP_TOAST_API: ToastApi = {
+  toast: () => "noop",
+  success: () => "noop",
+  error: () => "noop",
+  warning: () => "noop",
+  info: () => "noop",
+  loading: () => "noop",
+  resolve: () => undefined,
+  dismiss: () => undefined,
+  clear: () => undefined,
+};
+
+/**
  * The one hook components use:
  * `const toast = useToast(); toast.success("Saved!");`
  */
 export function useToast(): ToastApi {
   const ctx = useContext(ToastContext);
-  if (!ctx) {
-    throw new Error("useToast must be used inside <ToastProvider>.");
-  }
-  return ctx;
+  return ctx ?? NOOP_TOAST_API;
 }
 
 /* ─────────────────────────────────────────────
